@@ -27,6 +27,13 @@ pub enum TokenType {
     Let,
 }
 
+pub fn input_is_single_char_token(input: &str) -> bool {
+    match input {
+        ASSIGN | SEMICOLON | LPAREN | RPAREN | COMMA | PLUS | LBRACE | RBRACE => true,
+        _ => false,
+    }
+}
+
 pub fn token_type_from_str(input: &str) -> TokenType {
     match input {
         EOF => Eof,
