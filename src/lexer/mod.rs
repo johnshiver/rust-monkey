@@ -1,35 +1,49 @@
+use crate::token::TokenType::Eof;
 use crate::token::{token_type_from_str, Token};
 
-pub struct Lexer<'a> {
-    input: &'a str,
-    position: i32,
-    read_position: i32,
+#[derive(Debug)]
+pub struct Lexer {
+    input: String,
+    read_position: usize,
 }
 
 impl Lexer {
-    pub fn new(input: &str) -> Self {
+    pub fn new(input: String) -> Self {
         Lexer {
             input,
-            position: 0,
             read_position: 0,
         }
     }
-    // TODO: need to figure out if we're at the end
     pub fn next_token(&mut self) -> Token {
-        let curr = self.input[self.read_position];
-        let token_type = token_type_from_str(curr);
-        self.advance_read_position();
+        let token_type;
+        let curr;
+        if self.end_of_input() {
+            curr = '\0';
+            token_type = Eof;
+        } else {
+            curr = self
+                .input
+                .chars()
+                .nth(self.read_position)
+                .expect("read position read past input!");
+            token_type = token_type_from_str(curr.to_string().as_str());
+            self.advance_read_position();
+        }
         Token {
-            literal: curr,
+            literal: curr.to_string(),
             kind: token_type,
         }
     }
 
     fn advance_read_position(&mut self) {
-        if self.read_position >= self.input.len() as i32 {
+        if self.end_of_input() {
             return;
         }
         self.read_position += 1;
+    }
+
+    fn end_of_input(&self) -> bool {
+        self.read_position >= self.input.len()
     }
 }
 
@@ -40,54 +54,60 @@ mod tests {
     use crate::token::TokenType;
 
     #[test]
-    fn next_token() {
-        let input = "=_(){},;";
+    fn next_token_single_vals() {
+        let input = "=+(){},;";
         let expected_tokens = vec![
             token::Token {
-                literal: "=",
+                literal: "=".to_string(),
                 kind: TokenType::Assign,
             },
             token::Token {
-                literal: "+",
+                literal: "+".to_string(),
                 kind: TokenType::Plus,
             },
             token::Token {
-                literal: "(",
+                literal: "(".to_string(),
                 kind: TokenType::Lparen,
             },
             token::Token {
-                literal: ")",
+                literal: ")".to_string(),
                 kind: TokenType::Rparen,
             },
             token::Token {
-                literal: "{",
-                kind: TokenType::Rbrace,
-            },
-            token::Token {
-                literal: "}",
+                literal: "{".to_string(),
                 kind: TokenType::Lbrace,
             },
             token::Token {
-                literal: ",",
+                literal: "}".to_string(),
+                kind: TokenType::Rbrace,
+            },
+            token::Token {
+                literal: ",".to_string(),
                 kind: TokenType::Comma,
             },
             token::Token {
-                literal: ";",
+                literal: ";".to_string(),
                 kind: TokenType::Semicolon,
             },
             token::Token {
-                literal: "",
+                literal: "\0".to_string(),
                 kind: TokenType::Eof,
             },
         ];
+        let lexer_input = input.to_string();
         let mut lexer = Lexer {
-            input,
-            position: 0,
+            input: lexer_input,
             read_position: 0,
         };
         for t in expected_tokens {
-            let mut next_token = lexer.next_token();
+            let next_token = lexer.next_token();
             assert_eq!(t, next_token);
         }
+    }
+
+    #[test]
+    fn next_token_multi_line() {
+        let input = "\
+        ";
     }
 }

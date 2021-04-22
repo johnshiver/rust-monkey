@@ -1,15 +1,15 @@
-// TODO: create token type enum
-
 use crate::token::TokenType::{
     Assign, Comma, Eof, Function, Ident, Illegal, Int, Lbrace, Let, Lparen, Plus, Rbrace, Rparen,
     Semicolon,
 };
 
-pub struct Token<'a> {
-    pub literal: &'a str,
+#[derive(Debug, Eq, PartialEq)]
+pub struct Token {
+    pub literal: String,
     pub kind: TokenType,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum TokenType {
     Illegal,
     Eof,
@@ -56,8 +56,8 @@ const IDENT: &str = "IDENT"; // add, foobar, x, y, ...
 const INT: &str = "INT"; // 134356
 
 // Operators
-const ASSIGN: &str = "ASSIGN";
-const PLUS: &str = "PLUS";
+const ASSIGN: &str = "=";
+const PLUS: &str = "+";
 
 // Delimiters
 const COMMA: &str = ",";
