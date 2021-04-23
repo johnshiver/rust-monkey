@@ -16,7 +16,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn next_token(&mut self) -> Token {
-        self.eat_whitespace();
+        self.skip_whitespace();
         match self.read_char() {
             Some('+') => Token::Plus,
             Some('(') => Token::Lparen,
@@ -26,6 +26,12 @@ impl<'a> Lexer<'a> {
             Some(',') => Token::Comma,
             Some(';') => Token::Semicolon,
             Some('=') => Token::Assign,
+            Some('-') => Token::Minus,
+            Some('!') => Token::Bang,
+            Some('*') => Token::Asterisk,
+            Some('/') => Token::Slash,
+            Some('<') => Token::LT,
+            Some('>') => Token::GT,
             Some(ch) => {
                 if ch.is_alphabetic() {
                     let ident = self.read_identifier(ch);
@@ -41,7 +47,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn eat_whitespace(&mut self) {
+    fn skip_whitespace(&mut self) {
         while let Some(&ch) = self.input.peek() {
             if ch.is_whitespace() {
                 self.read_char();
@@ -122,6 +128,8 @@ mod tests {
     };
     
     let result = add(five, ten);
+    !-/*5;
+    5 < 10 > 5;
     ";
         let expected_tokens = vec![
             Token::Let,
@@ -159,6 +167,18 @@ mod tests {
             Token::Comma,
             Token::Ident("ten".to_string()),
             Token::Rparen,
+            Token::Semicolon,
+            Token::Bang,
+            Token::Minus,
+            Token::Slash,
+            Token::Asterisk,
+            Token::Int(5),
+            Token::Semicolon,
+            Token::Int(5),
+            Token::LT,
+            Token::Int(10),
+            Token::GT,
+            Token::Int(5),
             Token::Semicolon,
             Token::Eof,
         ];
