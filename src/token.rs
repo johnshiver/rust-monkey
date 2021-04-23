@@ -18,6 +18,10 @@ pub enum Token {
     LT,
     GT,
 
+    // Two char operators
+    EQ,
+    NEQ,
+
     // Delimiters
     Comma,
     Semicolon,

@@ -1,4 +1,3 @@
-use crate::token::Token::Int;
 use crate::token::{lookup_ident, Token};
 use std::iter::Peekable;
 use std::str::Chars;
@@ -25,9 +24,23 @@ impl<'a> Lexer<'a> {
             Some('}') => Token::Rbrace,
             Some(',') => Token::Comma,
             Some(';') => Token::Semicolon,
-            Some('=') => Token::Assign,
+            Some('=') => {
+                if let Some('=') = self.peek_char() {
+                    self.read_char();
+                    Token::EQ
+                } else {
+                    Token::Assign
+                }
+            }
             Some('-') => Token::Minus,
-            Some('!') => Token::Bang,
+            Some('!') => {
+                if let Some('=') = self.peek_char() {
+                    self.read_char();
+                    Token::NEQ
+                } else {
+                    Token::Bang
+                }
+            }
             Some('*') => Token::Asterisk,
             Some('/') => Token::Slash,
             Some('<') => Token::LT,
@@ -136,6 +149,9 @@ mod tests {
     } else { 
         return false;
    }
+
+    10 == 10;
+    10 != 9;
     ";
         let expected_tokens = vec![
             Token::Let,
@@ -203,6 +219,14 @@ mod tests {
             Token::False,
             Token::Semicolon,
             Token::Rbrace,
+            Token::Int(10),
+            Token::EQ,
+            Token::Int(10),
+            Token::Semicolon,
+            Token::Int(10),
+            Token::NEQ,
+            Token::Int(9),
+            Token::Semicolon,
             Token::Eof,
         ];
         let mut lexer = Lexer::new(input);
