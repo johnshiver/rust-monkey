@@ -1,3 +1,4 @@
+use crate::token::Token::Int;
 use crate::token::{lookup_ident, Token};
 use std::iter::Peekable;
 use std::str::Chars;
@@ -28,12 +29,13 @@ impl<'a> Lexer<'a> {
             Some(ch) => {
                 if ch.is_alphabetic() {
                     let ident = self.read_identifier(ch);
-                    let tok = lookup_ident(ident);
-                    tok;
+                    lookup_ident(ident)
+                } else if ch.is_numeric() {
+                    Token::Int(self.read_int(ch))
+                } else {
+                    Token::Illegal
                 }
-                Token::Illegal
             }
-
             None => Token::Eof,
             _ => Token::Illegal,
         }
@@ -62,12 +64,26 @@ impl<'a> Lexer<'a> {
         ident.push(ch);
         while let Some(&ch) = self.input.peek() {
             if ch.is_alphabetic() {
-                ident.push(self.read_char().expect("read beyond end of input"));
+                ident.push(self.read_char().expect("scanned beyond end of input"));
             } else {
                 break;
             }
         }
         ident
+    }
+    fn read_int(&mut self, ch: char) -> i64 {
+        let mut ident = String::new();
+        ident.push(ch);
+        while let Some(&ch) = self.input.peek() {
+            if ch.is_numeric() {
+                ident.push(self.read_char().expect("scanned beyond end of input"));
+            } else {
+                break;
+            }
+        }
+        ident
+            .parse::<i64>()
+            .expect("failed to parse int from input")
     }
 }
 
@@ -111,6 +127,7 @@ mod tests {
             Token::Let,
             Token::Ident("five".to_string()),
             Token::Assign,
+            Token::Int(5),
             Token::Semicolon,
             Token::Let,
             Token::Ident("ten".to_string()),
@@ -126,7 +143,7 @@ mod tests {
             Token::Comma,
             Token::Ident("y".to_string()),
             Token::Rparen,
-            Token::Rbrace,
+            Token::Lbrace,
             Token::Ident("x".to_string()),
             Token::Plus,
             Token::Ident("y".to_string()),
