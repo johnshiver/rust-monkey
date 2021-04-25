@@ -3,7 +3,7 @@
 use crate::token::Token;
 
 pub enum Statement {
-    Let,
+    Let(Box<LetStatement>),
 }
 
 pub enum Expression {}
@@ -21,7 +21,13 @@ impl Program {
     }
 }
 
-pub struct Let {
+pub struct LetStatement {
     pub name: Token, // perhaps this should be new type, Identifier
     pub value: Expression,
+}
+
+impl LetStatement {
+    pub fn new(name: Token, value: Expression) -> Self {
+        LetStatement { name, value }
+    }
 }

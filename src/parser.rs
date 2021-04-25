@@ -31,8 +31,10 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::ast::Statement;
     use crate::lexer::Lexer;
     use crate::parser::Parser;
+    use crate::token::Token;
 
     #[test]
     fn let_statements() {
@@ -45,5 +47,18 @@ mod tests {
         let mut p = Parser::new(l);
         let program = p.parse_program();
         assert_eq!(program.statements.len(), 3);
+        let expected_identifiers = vec![
+            Token::Ident("x".to_string()),
+            Token::Ident("y".to_string()),
+            Token::Ident("foobar".to_string()),
+        ];
+        let mut statements = program.statements.iter();
+        for id in expected_identifiers {
+            match statements.next().unwrap() {
+                Statement::Let(ref l) => {
+                    assert_eq!(l.name, id)
+                }
+            }
+        }
     }
 }
