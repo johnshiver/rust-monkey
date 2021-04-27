@@ -1,6 +1,12 @@
-use crate::ast::Program;
+use crate::ast::Statement::Let;
+use crate::ast::{Expression, LetStatement, Program, Statement};
 use crate::lexer::Lexer;
 use crate::token::Token;
+use crate::token::Token::Eof;
+use std::borrow::BorrowMut;
+use std::error::Error;
+
+type ParseError = String;
 
 struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -19,13 +25,63 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn next_token(&mut self) {
+    fn next_token(&mut self) {
         self.curr_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
     }
 
+    fn parse_statement(&mut self) -> Result<Statement, ParseError> {
+        match self.curr_token {
+            Token::Let => match self.parse_let() {
+                Ok(stmt) => Ok(stmt),
+                Err(err) => Err(err),
+            },
+            _ => Err(format!("not supported")),
+        }
+    }
+
+    fn parse_let(&mut self) -> Result<Statement, ParseError> {
+        // next token should be an identifier
+        let name;
+        match self.expect_ident() {
+            Ok(n) => name = n,
+            Err(e) => return Err(e),
+        };
+
+        self.next_token();
+
+        let mut stmt = LetStatement {
+            name: Token::Ident(name),
+            value: None,
+        };
+
+        // eventually will have to parse the Expression
+        while self.curr_token != Token::Semicolon {
+            self.next_token();
+        }
+        Ok(Let(Box::new(stmt)))
+    }
+
+    fn expect_ident(&mut self) -> Result<String, ParseError> {
+        match self.peek_token.clone() {
+            Token::Ident(name) => Ok(name),
+            _ => Err(format!("expected an identifier token")),
+        }
+    }
+
     pub fn parse_program(&mut self) -> Program {
-        Program { statements: vec![] }
+        let mut p = Program {
+            statements: Vec::new(),
+        };
+        while self.curr_token != Eof {
+            let stmt = self.parse_statement();
+            match stmt {
+                Ok(stmt) => p.statements.push(stmt),
+                Err(err) => continue,
+            }
+            self.next_token();
+        }
+        p
     }
 }
 

@@ -10,7 +10,7 @@ pub enum Expression {}
 
 // root node
 pub struct Program {
-    pub(crate) statements: Vec<Statement>,
+    pub statements: Vec<Statement>,
 }
 
 impl Program {
@@ -23,11 +23,14 @@ impl Program {
 
 pub struct LetStatement {
     pub name: Token, // perhaps this should be new type, Identifier
-    pub value: Expression,
+    pub value: Option<Expression>,
 }
 
 impl LetStatement {
     pub fn new(name: Token, value: Expression) -> Self {
-        LetStatement { name, value }
+        LetStatement {
+            name,
+            value: Some(value),
+        }
     }
 }
