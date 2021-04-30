@@ -2,16 +2,18 @@ use crate::ast::Statement::Let;
 use crate::ast::{Expression, LetStatement, Program, Statement};
 use crate::lexer::Lexer;
 use crate::token::Token;
-use crate::token::Token::Eof;
+use crate::token::Token::{Assign, Eof};
 use std::borrow::BorrowMut;
 use std::error::Error;
 
+// TODO: might be nice to add metadata to parse error, like line number
 type ParseError = String;
 
 struct Parser<'a> {
     lexer: Lexer<'a>,
     curr_token: Token,
     peek_token: Token,
+    errors: Vec<ParseError>,
 }
 
 impl<'a> Parser<'a> {
@@ -22,50 +24,65 @@ impl<'a> Parser<'a> {
             lexer: l,
             curr_token,
             peek_token,
+            errors: Vec::new(),
         }
     }
 
-    fn next_token(&mut self) {
+    fn advance_tokens(&mut self) {
         self.curr_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
     }
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match self.curr_token {
-            Token::Let => match self.parse_let() {
-                Ok(stmt) => Ok(stmt),
-                Err(err) => Err(err),
-            },
-            _ => Err(format!("not supported")),
+            Token::Let => {
+                let stmt = self.parse_let();
+                Ok(stmt)
+            }
+            _ => Err(format!(
+                "token {:?} not supported statement",
+                self.curr_token
+            )),
         }
     }
 
-    fn parse_let(&mut self) -> Result<Statement, ParseError> {
+    fn parse_let(&mut self) -> Statement {
         // next token should be an identifier
-        let name;
+        let mut name = "".to_string();
         match self.expect_ident() {
             Ok(n) => name = n,
-            Err(e) => return Err(e),
+            Err(e) => self.errors.push(e),
         };
-
-        self.next_token();
 
         let mut stmt = LetStatement {
             name: Token::Ident(name),
             value: None,
         };
 
+        if self.peek_token != Assign {
+            self.errors.push(format!(
+                "expected assign token, received {:?}",
+                self.peek_token
+            ));
+        }
+
         // eventually will have to parse the Expression
         while self.curr_token != Token::Semicolon {
-            self.next_token();
+            self.advance_tokens();
         }
-        Ok(Let(Box::new(stmt)))
+        Let(Box::new(stmt))
     }
 
     fn expect_ident(&mut self) -> Result<String, ParseError> {
         match self.peek_token.clone() {
-            Token::Ident(name) => Ok(name),
-            _ => Err(format!("expected an identifier token")),
+            Token::Ident(name) => {
+                self.advance_tokens();
+                Ok(name)
+            }
+            _ => Err(format!(
+                "expected an identifier token, received {:?}",
+                self.peek_token
+            )),
         }
     }
 
@@ -77,9 +94,9 @@ impl<'a> Parser<'a> {
             let stmt = self.parse_statement();
             match stmt {
                 Ok(stmt) => p.statements.push(stmt),
-                Err(err) => continue,
+                Err(err) => self.errors.push(err),
             }
-            self.next_token();
+            self.advance_tokens();
         }
         p
     }
@@ -116,5 +133,18 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn invalid_let_statement() {
+        let input = "
+        let x 5;
+        let = 10;
+        let 83838383;
+        ";
+        let l = Lexer::new(input);
+        let mut p = Parser::new(l);
+        let program = p.parse_program();
+        assert_eq!(p.errors.len(), 4);
     }
 }
