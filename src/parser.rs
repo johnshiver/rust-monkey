@@ -1,5 +1,5 @@
-use crate::ast::Statement::Let;
-use crate::ast::{Expression, LetStatement, Program, Statement};
+use crate::ast::Statement::{Let, Return};
+use crate::ast::{Expression, LetStatement, Program, ReturnStatement, Statement};
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::token::Token::{Assign, Eof};
@@ -39,6 +39,10 @@ impl<'a> Parser<'a> {
                 let stmt = self.parse_let();
                 Ok(stmt)
             }
+            Token::Return => {
+                let stmt = self.parse_return();
+                Ok(stmt)
+            }
             _ => Err(format!(
                 "token {:?} not supported statement",
                 self.curr_token
@@ -71,6 +75,21 @@ impl<'a> Parser<'a> {
             self.advance_tokens();
         }
         Let(Box::new(stmt))
+    }
+
+    fn parse_return(&mut self) -> Statement {
+        // current token is return
+        let mut stmt = ReturnStatement {
+            name: Token::Return,
+            value: None,
+        };
+
+        self.advance_tokens();
+        // eventually will have to parse the Expression
+        while self.curr_token != Token::Semicolon {
+            self.advance_tokens();
+        }
+        Return(Box::new(stmt))
     }
 
     fn expect_ident(&mut self) -> Result<String, ParseError> {
@@ -108,6 +127,7 @@ mod tests {
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::token::Token;
+    use crate::token::Token::Return;
 
     #[test]
     fn let_statements() {
@@ -131,6 +151,7 @@ mod tests {
                 Statement::Let(ref l) => {
                     assert_eq!(l.name, id)
                 }
+                _ => panic!("expected let statement"),
             }
         }
     }
@@ -146,5 +167,25 @@ mod tests {
         let mut p = Parser::new(l);
         let program = p.parse_program();
         assert_eq!(p.errors.len(), 4);
+    }
+
+    #[test]
+    fn return_statements() {
+        let input = "
+        return 5;
+        return 10;
+        return 993322;
+        ";
+        let l = Lexer::new(input);
+        let mut p = Parser::new(l);
+        let program = p.parse_program();
+        assert_eq!(program.statements.len(), 3);
+        let mut statements = program.statements.iter();
+        match statements.next().unwrap() {
+            Statement::Return(ref r) => {
+                assert_eq!(Return, r.name)
+            }
+            Statement::Let(ref l) => panic!("expected return statement, received {:?}", l.name),
+        }
     }
 }

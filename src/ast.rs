@@ -4,6 +4,7 @@ use crate::token::Token;
 
 pub enum Statement {
     Let(Box<LetStatement>),
+    Return(Box<ReturnStatement>),
 }
 
 pub enum Expression {}
@@ -22,13 +23,27 @@ impl Program {
 }
 
 pub struct LetStatement {
-    pub name: Token, // perhaps this should be new type, Identifier
+    pub name: Token,
     pub value: Option<Expression>,
 }
 
 impl LetStatement {
     pub fn new(name: Token, value: Expression) -> Self {
         LetStatement {
+            name,
+            value: Some(value),
+        }
+    }
+}
+
+pub struct ReturnStatement {
+    pub name: Token, // return token
+    pub value: Option<Expression>,
+}
+
+impl ReturnStatement {
+    pub fn new(name: Token, value: Expression) -> Self {
+        ReturnStatement {
             name,
             value: Some(value),
         }
