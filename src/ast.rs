@@ -5,9 +5,13 @@ use crate::token::Token;
 pub enum Statement {
     Let(Box<LetStatement>),
     Return(Box<ReturnStatement>),
+    Expression(Box<Expression>)
 }
 
-pub enum Expression {}
+pub enum Expression {
+    Ident(Box<IdentExpression>)
+
+}
 
 // root node
 pub struct Program {
@@ -46,6 +50,18 @@ impl ReturnStatement {
         ReturnStatement {
             name,
             value: Some(value),
+        }
+    }
+}
+
+pub struct IdentExpression {
+    pub value: Token, // return token
+}
+
+impl IdentExpression {
+    pub fn new(value: Token) -> Self {
+        IdentExpression{
+            value,
         }
     }
 }

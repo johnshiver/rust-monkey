@@ -1,5 +1,5 @@
 use crate::ast::Statement::{Let, Return};
-use crate::ast::{Expression, LetStatement, Program, ReturnStatement, Statement};
+use crate::ast::{Expression, LetStatement, Program, ReturnStatement, Statement, IdentExpression};
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::token::Token::{Assign, Eof};
@@ -8,6 +8,18 @@ use std::error::Error;
 
 // TODO: might be nice to add metadata to parse error, like line number
 type ParseError = String;
+
+// define operator precedence
+type Precedence = i8;
+const LOWEST: Precedence = 1;
+const EQUALS: Precedence = 2; // ==
+const LESS_GREATER: Precedence = 3; // < or >
+const SUM: Precedence = 4; // +
+const PRODUCT: Precedence = 5; // *
+const PREFIX: Precedence = 6;// -X or !X
+const CALL: Precedence = 7;// myFunction(X)
+
+
 
 struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -43,10 +55,10 @@ impl<'a> Parser<'a> {
                 let stmt = self.parse_return();
                 Ok(stmt)
             }
-            _ => Err(format!(
-                "token {:?} not supported statement",
-                self.curr_token
-            )),
+            _ => {
+                let stmt = self.parse_expression();
+                return Ok(Expression(Box::new(stmt)))
+            },
         }
     }
 
@@ -92,6 +104,25 @@ impl<'a> Parser<'a> {
         Return(Box::new(stmt))
     }
 
+    fn parse_expression(&mut self) -> Expression {
+        match self.curr_token.clone() {
+            Token::Ident(literal) => {
+                self.parse_ident(literal)
+            },
+            _ => {
+            }
+        }
+
+        return Expression::Ident(Box::new(IdentExpression))
+    }
+
+    fn parse_ident(&mut self, literal: String) -> Expression {
+        let ie = IdentExpression{
+            value: Token::Ident(literal)
+        };
+        return Expression::Ident(Box::new(ie))
+    }
+
     fn expect_ident(&mut self) -> Result<String, ParseError> {
         match self.peek_token.clone() {
             Token::Ident(name) => {
@@ -104,6 +135,7 @@ impl<'a> Parser<'a> {
             )),
         }
     }
+
 
     pub fn parse_program(&mut self) -> Program {
         let mut p = Program {
@@ -128,6 +160,7 @@ mod tests {
     use crate::parser::Parser;
     use crate::token::Token;
     use crate::token::Token::Return;
+    use std::ops::Deref;
 
     #[test]
     fn let_statements() {
@@ -184,8 +217,30 @@ mod tests {
         match statements.next().unwrap() {
             Statement::Return(ref r) => {
                 assert_eq!(Return, r.name)
+            },
+            _ => {
+                panic!("didnt receive a statement expression!")
             }
-            Statement::Let(ref l) => panic!("expected return statement, received {:?}", l.name),
+        }
+    }
+
+    #[test]
+    fn parse_ident() {
+        let input = "foobar;";
+        let l = Lexer::new(input);
+        let mut p = Parser::new(l);
+        let program = p.parse_program();
+        assert_eq!(program.statements.len(), 1);
+        let mut statements = program.statements.iter();
+        match statements.next().unwrap() {
+            Statement::Expression(stmt) => {
+                assert_eq!(*)
+
+            },
+            _ => {
+                panic!("didnt receive a statement expression!")
+            }
+
         }
     }
 }
