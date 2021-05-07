@@ -56,11 +56,7 @@ impl<'a> Parser<'a> {
                 Ok(stmt)
             }
             _ => {
-                let stmt = self.parse_expression();
-                match stmt {
-                    Ok(expr) => Ok(ExpressionStatement(expr)),
-                   Err(e) => Err(e),
-                }
+                self.parse_expression_statement()
             },
         }
     }
@@ -105,6 +101,18 @@ impl<'a> Parser<'a> {
             self.advance_tokens();
         }
         Return(Box::new(stmt))
+    }
+
+    fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
+        let stmt = self.parse_expression();
+        if self.peek_token == Token::Semicolon {
+            self.advance_tokens();
+        }
+        match stmt {
+            Ok(expr) => Ok(ExpressionStatement(expr)),
+            Err(e) => Err(e),
+        }
+
     }
 
     fn parse_expression(&mut self) -> Result<Expression, ParseError>{
@@ -234,6 +242,7 @@ mod tests {
         let mut p = Parser::new(l);
         let program = p.parse_program();
         assert_eq!(program.statements.len(), 1);
+        assert_eq!(p.errors.len(), 0);
         let mut statements = program.statements.iter();
         match statements.next().unwrap() {
             Statement::ExpressionStatement(stmt) => {
