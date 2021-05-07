@@ -1,5 +1,8 @@
-use crate::ast::Statement::{Let, Return, ExpressionStatement};
-use crate::ast::{Expression, LetStatement, Program, ReturnStatement, Statement, IdentExpression, IntegerLiteralExpression};
+use crate::ast::Statement::{ExpressionStatement, Let, Return};
+use crate::ast::{
+    Expression, IdentExpression, IntegerLiteralExpression, LetStatement, Program, ReturnStatement,
+    Statement,
+};
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::token::Token::{Assign, Eof};
@@ -16,10 +19,8 @@ const EQUALS: Precedence = 2; // ==
 const LESS_GREATER: Precedence = 3; // < or >
 const SUM: Precedence = 4; // +
 const PRODUCT: Precedence = 5; // *
-const PREFIX: Precedence = 6;// -X or !X
-const CALL: Precedence = 7;// myFunction(X)
-
-
+const PREFIX: Precedence = 6; // -X or !X
+const CALL: Precedence = 7; // myFunction(X)
 
 struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -55,9 +56,7 @@ impl<'a> Parser<'a> {
                 let stmt = self.parse_return();
                 Ok(stmt)
             }
-            _ => {
-                self.parse_expression_statement()
-            },
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -69,7 +68,7 @@ impl<'a> Parser<'a> {
             Err(e) => self.errors.push(e),
         };
 
-        let mut stmt = LetStatement::new(name,None);
+        let mut stmt = LetStatement::new(name, None);
 
         if self.peek_token != Assign {
             self.errors.push(format!(
@@ -108,28 +107,25 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expression(&mut self) -> Result<Expression, ParseError>{
+    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
         match self.curr_token.clone() {
-            Token::Ident(literal) => {
-                Ok(self.parse_ident(literal))
-            },
-            Token::Int(literal) => {
-                Ok(self.parse_int_literal(literal))
-            }
-            _ => {
-               Err(format!("{:?} expression token not supported", self.curr_token))
-            }
+            Token::Ident(literal) => Ok(self.parse_ident(literal)),
+            Token::Int(literal) => Ok(self.parse_int_literal(literal)),
+            _ => Err(format!(
+                "{:?} expression token not supported",
+                self.curr_token
+            )),
         }
     }
 
     fn parse_ident(&mut self, literal: String) -> Expression {
         let ie = IdentExpression::new(literal);
-        return Expression::Ident(Box::new(ie))
+        return Expression::Ident(Box::new(ie));
     }
 
     fn parse_int_literal(&mut self, literal: i64) -> Expression {
         let ie = IntegerLiteralExpression::new(literal);
-        return Expression::IntegerLiteral(Box::new(ie))
+        return Expression::IntegerLiteral(Box::new(ie));
     }
 
     fn expect_ident(&mut self) -> Result<String, ParseError> {
@@ -161,7 +157,7 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Statement, Expression};
+    use crate::ast::{Expression, Statement};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::token::Token;
@@ -224,7 +220,7 @@ mod tests {
         match statements.next().unwrap() {
             Statement::Return(ref r) => {
                 assert_eq!(Return, r.name)
-            },
+            }
             _ => {
                 panic!("didnt receive a statement expression!")
             }
@@ -241,20 +237,17 @@ mod tests {
         assert_eq!(p.errors.len(), 0);
         let mut statements = program.statements.iter();
         match statements.next().unwrap() {
-            Statement::ExpressionStatement(stmt) => {
-                match stmt {
-                    Expression::Ident(ident)=> {
-                        assert_eq!(Token::Ident("foobar".to_string()), ident.value);
-                    }
-                    _ => {
-                        panic!("didnt receive a ident expression!")
-                    }
+            Statement::ExpressionStatement(stmt) => match stmt {
+                Expression::Ident(ident) => {
+                    assert_eq!(Token::Ident("foobar".to_string()), ident.value);
+                }
+                _ => {
+                    panic!("didnt receive a ident expression!")
                 }
             },
             _ => {
                 panic!("didnt receive a statement expression!")
             }
-
         }
     }
 
@@ -268,20 +261,17 @@ mod tests {
         assert_eq!(p.errors.len(), 0);
         let mut statements = program.statements.iter();
         match statements.next().unwrap() {
-            Statement::ExpressionStatement(stmt) => {
-                match stmt {
-                    Expression::IntegerLiteral(ident)=> {
-                        assert_eq!(Token::Int(5), ident.value);
-                    }
-                    _ => {
-                        panic!("didnt receive a integer literal expression!")
-                    }
+            Statement::ExpressionStatement(stmt) => match stmt {
+                Expression::IntegerLiteral(ident) => {
+                    assert_eq!(Token::Int(5), ident.value);
+                }
+                _ => {
+                    panic!("didnt receive a integer literal expression!")
                 }
             },
             _ => {
                 panic!("didnt receive a statement expression!")
             }
-
         }
     }
 }
