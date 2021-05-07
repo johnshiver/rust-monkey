@@ -1,4 +1,4 @@
-use crate::ast::Statement::{Let, Return};
+use crate::ast::Statement::{Let, Return, ExpressionStatement};
 use crate::ast::{Expression, LetStatement, Program, ReturnStatement, Statement, IdentExpression};
 use crate::lexer::Lexer;
 use crate::token::Token;
@@ -57,7 +57,10 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let stmt = self.parse_expression();
-                return Ok(Expression(Box::new(stmt)))
+                match stmt {
+                    Ok(expr) => Ok(ExpressionStatement(expr)),
+                   Err(e) => Err(e),
+                }
             },
         }
     }
@@ -104,16 +107,15 @@ impl<'a> Parser<'a> {
         Return(Box::new(stmt))
     }
 
-    fn parse_expression(&mut self) -> Expression {
+    fn parse_expression(&mut self) -> Result<Expression, ParseError>{
         match self.curr_token.clone() {
             Token::Ident(literal) => {
-                self.parse_ident(literal)
+                Ok(self.parse_ident(literal))
             },
             _ => {
+               Err(format!("{:?} expression token not supported", self.curr_token))
             }
         }
-
-        return Expression::Ident(Box::new(IdentExpression))
     }
 
     fn parse_ident(&mut self, literal: String) -> Expression {
@@ -155,12 +157,13 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::Statement;
+    use crate::ast::{Statement, Expression};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::token::Token;
     use crate::token::Token::Return;
     use std::ops::Deref;
+    use Expression::Ident;
 
     #[test]
     fn let_statements() {
@@ -233,9 +236,12 @@ mod tests {
         assert_eq!(program.statements.len(), 1);
         let mut statements = program.statements.iter();
         match statements.next().unwrap() {
-            Statement::Expression(stmt) => {
-                assert_eq!(*)
-
+            Statement::ExpressionStatement(stmt) => {
+                match stmt {
+                    Expression::Ident(ident)=> {
+                        assert_eq!(Token::Ident("foobar".to_string()), ident.value);
+                    }
+                }
             },
             _ => {
                 panic!("didnt receive a statement expression!")

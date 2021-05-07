@@ -5,7 +5,7 @@ use crate::token::Token;
 pub enum Statement {
     Let(Box<LetStatement>),
     Return(Box<ReturnStatement>),
-    Expression(Box<Expression>)
+    ExpressionStatement(Expression)
 }
 
 pub enum Expression {
