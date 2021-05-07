@@ -69,10 +69,7 @@ impl<'a> Parser<'a> {
             Err(e) => self.errors.push(e),
         };
 
-        let mut stmt = LetStatement {
-            name: Token::Ident(name),
-            value: None,
-        };
+        let mut stmt = LetStatement::new(name,None);
 
         if self.peek_token != Assign {
             self.errors.push(format!(
@@ -90,10 +87,7 @@ impl<'a> Parser<'a> {
 
     fn parse_return(&mut self) -> Statement {
         // current token is return
-        let mut stmt = ReturnStatement {
-            name: Token::Return,
-            value: None,
-        };
+        let mut stmt = ReturnStatement::new(None);
 
         self.advance_tokens();
         // eventually will have to parse the Expression
@@ -112,7 +106,6 @@ impl<'a> Parser<'a> {
             Ok(expr) => Ok(ExpressionStatement(expr)),
             Err(e) => Err(e),
         }
-
     }
 
     fn parse_expression(&mut self) -> Result<Expression, ParseError>{
@@ -127,9 +120,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident(&mut self, literal: String) -> Expression {
-        let ie = IdentExpression{
-            value: Token::Ident(literal)
-        };
+        let ie = IdentExpression::new(literal);
         return Expression::Ident(Box::new(ie))
     }
 
@@ -146,11 +137,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-
     pub fn parse_program(&mut self) -> Program {
-        let mut p = Program {
-            statements: Vec::new(),
-        };
+        let mut p = Program::new();
         while self.curr_token != Eof {
             let stmt = self.parse_statement();
             match stmt {
@@ -249,6 +237,9 @@ mod tests {
                 match stmt {
                     Expression::Ident(ident)=> {
                         assert_eq!(Token::Ident("foobar".to_string()), ident.value);
+                    }
+                    _ => {
+                        panic!("didnt receive a ident expression!")
                     }
                 }
             },

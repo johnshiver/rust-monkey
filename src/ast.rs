@@ -9,8 +9,8 @@ pub enum Statement {
 }
 
 pub enum Expression {
-    Ident(Box<IdentExpression>)
-
+    Ident(Box<IdentExpression>),
+    IntegerLiteral(Box<IntegerLiteralExpression>)
 }
 
 // root node
@@ -32,10 +32,11 @@ pub struct LetStatement {
 }
 
 impl LetStatement {
-    pub fn new(name: Token, value: Expression) -> Self {
+    pub fn new(name: String, value: Option<Expression>) -> Self {
+        let tok = Token::Ident(name);
         LetStatement {
-            name,
-            value: Some(value),
+            name: tok,
+            value,
         }
     }
 }
@@ -46,10 +47,10 @@ pub struct ReturnStatement {
 }
 
 impl ReturnStatement {
-    pub fn new(name: Token, value: Expression) -> Self {
+    pub fn new(value: Option<Expression>) -> Self {
         ReturnStatement {
-            name,
-            value: Some(value),
+            name: Token::Return,
+            value,
         }
     }
 }
@@ -59,9 +60,23 @@ pub struct IdentExpression {
 }
 
 impl IdentExpression {
-    pub fn new(value: Token) -> Self {
+    pub fn new(value: String) -> Self {
+        let tok = Token::Ident(value);
         IdentExpression{
-            value,
+            value: tok
+        }
+    }
+}
+
+pub struct IntegerLiteralExpression {
+    pub value: Token, // return token
+}
+
+impl IntegerLiteralExpression{
+    pub fn new(value: i64) -> Self {
+        let tok = Token::Int(value);
+        IntegerLiteralExpression{
+            value: tok
         }
     }
 }
