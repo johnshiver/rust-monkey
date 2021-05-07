@@ -157,11 +157,12 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Expression, Statement};
+    use crate::ast::{Expression, IntegerLiteralExpression, Statement};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::token::Token;
     use crate::token::Token::Return;
+    use std::borrow::Borrow;
     use std::ops::Deref;
     use Expression::Ident;
 
@@ -271,6 +272,52 @@ mod tests {
             },
             _ => {
                 panic!("didnt receive a statement expression!")
+            }
+        }
+    }
+
+    #[test]
+    fn parse_prefix_expression() {
+        struct Test {
+            input: String,
+            expected_operator: Token,
+            expected_integer: i64,
+        }
+
+        let tests = vec![
+            Test {
+                input: "!5;".to_string(),
+                expected_operator: Token::Bang,
+                expected_integer: 5,
+            },
+            Test {
+                input: "-15;".to_string(),
+                expected_operator: Token::Minus,
+                expected_integer: 15,
+            },
+        ];
+
+        for t in tests {
+            let l = Lexer::new(t.input.as_str());
+            let mut parser = Parser::new(l);
+            let program = parser.parse_program();
+
+            assert_eq!(1, program.statements.len());
+            assert_eq!(0, parser.errors.len());
+
+            let mut statements = program.statements.iter();
+            match statements.next().unwrap() {
+                Statement::ExpressionStatement(stmt) => match stmt {
+                    Expression::Prefix(prefix) => {
+                        assert_eq!(t.expected_operator, prefix.value);
+                    }
+                    _ => {
+                        panic!("didnt receive a prefix expression!")
+                    }
+                },
+                _ => {
+                    panic!("didnt receive a statement expression!")
+                }
             }
         }
     }

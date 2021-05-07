@@ -5,12 +5,13 @@ use crate::token::Token;
 pub enum Statement {
     Let(Box<LetStatement>),
     Return(Box<ReturnStatement>),
-    ExpressionStatement(Expression)
+    ExpressionStatement(Expression),
 }
 
 pub enum Expression {
     Ident(Box<IdentExpression>),
-    IntegerLiteral(Box<IntegerLiteralExpression>)
+    IntegerLiteral(Box<IntegerLiteralExpression>),
+    Prefix(Box<PrefixExpression>),
 }
 
 // root node
@@ -34,10 +35,7 @@ pub struct LetStatement {
 impl LetStatement {
     pub fn new(name: String, value: Option<Expression>) -> Self {
         let tok = Token::Ident(name);
-        LetStatement {
-            name: tok,
-            value,
-        }
+        LetStatement { name: tok, value }
     }
 }
 
@@ -62,9 +60,7 @@ pub struct IdentExpression {
 impl IdentExpression {
     pub fn new(value: String) -> Self {
         let tok = Token::Ident(value);
-        IdentExpression{
-            value: tok
-        }
+        IdentExpression { value: tok }
     }
 }
 
@@ -72,11 +68,21 @@ pub struct IntegerLiteralExpression {
     pub value: Token, // return token
 }
 
-impl IntegerLiteralExpression{
+impl IntegerLiteralExpression {
     pub fn new(value: i64) -> Self {
         let tok = Token::Int(value);
-        IntegerLiteralExpression{
-            value: tok
-        }
+        IntegerLiteralExpression { value: tok }
+    }
+}
+
+pub struct PrefixExpression {
+    pub value: Token, // prefix token
+    pub right: Expression,
+}
+
+impl PrefixExpression {
+    pub fn new(value: Token, exp: Expression) -> Self {
+        // TODO: might change this input
+        PrefixExpression { value, right: exp }
     }
 }
