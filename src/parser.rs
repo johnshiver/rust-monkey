@@ -1,5 +1,5 @@
 use crate::ast::Statement::{Let, Return, ExpressionStatement};
-use crate::ast::{Expression, LetStatement, Program, ReturnStatement, Statement, IdentExpression};
+use crate::ast::{Expression, LetStatement, Program, ReturnStatement, Statement, IdentExpression, IntegerLiteralExpression};
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::token::Token::{Assign, Eof};
@@ -113,6 +113,9 @@ impl<'a> Parser<'a> {
             Token::Ident(literal) => {
                 Ok(self.parse_ident(literal))
             },
+            Token::Int(literal) => {
+                Ok(self.parse_int_literal(literal))
+            }
             _ => {
                Err(format!("{:?} expression token not supported", self.curr_token))
             }
@@ -122,6 +125,11 @@ impl<'a> Parser<'a> {
     fn parse_ident(&mut self, literal: String) -> Expression {
         let ie = IdentExpression::new(literal);
         return Expression::Ident(Box::new(ie))
+    }
+
+    fn parse_int_literal(&mut self, literal: i64) -> Expression {
+        let ie = IntegerLiteralExpression::new(literal);
+        return Expression::IntegerLiteral(Box::new(ie))
     }
 
     fn expect_ident(&mut self) -> Result<String, ParseError> {
@@ -240,6 +248,33 @@ mod tests {
                     }
                     _ => {
                         panic!("didnt receive a ident expression!")
+                    }
+                }
+            },
+            _ => {
+                panic!("didnt receive a statement expression!")
+            }
+
+        }
+    }
+
+    #[test]
+    fn parse_int_literal() {
+        let input = "5;";
+        let l = Lexer::new(input);
+        let mut p = Parser::new(l);
+        let program = p.parse_program();
+        assert_eq!(program.statements.len(), 1);
+        assert_eq!(p.errors.len(), 0);
+        let mut statements = program.statements.iter();
+        match statements.next().unwrap() {
+            Statement::ExpressionStatement(stmt) => {
+                match stmt {
+                    Expression::IntegerLiteral(ident)=> {
+                        assert_eq!(Token::Int(5), ident.value);
+                    }
+                    _ => {
+                        panic!("didnt receive a integer literal expression!")
                     }
                 }
             },
