@@ -1,7 +1,7 @@
 use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
-    Expression, IdentExpression, IntegerLiteralExpression, LetStatement, Program, ReturnStatement,
-    Statement,
+    Expression, IdentExpression, IntegerLiteralExpression, LetStatement, PrefixExpression, Program,
+    ReturnStatement, Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
@@ -111,8 +111,9 @@ impl<'a> Parser<'a> {
         match self.curr_token.clone() {
             Token::Ident(literal) => Ok(self.parse_ident(literal)),
             Token::Int(literal) => Ok(self.parse_int_literal(literal)),
+            Token::Bang | Token::Minus => Ok(self.parse_prefix_expression()),
             _ => Err(format!(
-                "{:?} expression token not supported",
+                "while parsing expression: {:?} expression token not supported",
                 self.curr_token
             )),
         }
@@ -126,6 +127,15 @@ impl<'a> Parser<'a> {
     fn parse_int_literal(&mut self, literal: i64) -> Expression {
         let ie = IntegerLiteralExpression::new(literal);
         return Expression::IntegerLiteral(Box::new(ie));
+    }
+
+    fn parse_prefix_expression(&mut self) -> Expression {
+        let tok = self.curr_token.clone();
+        self.advance_tokens();
+        // TODO: fix this
+        let exp = self.parse_expression().unwrap();
+        let prefix_exp = PrefixExpression::new(tok, exp);
+        return Expression::Prefix(Box::new(prefix_exp));
     }
 
     fn expect_ident(&mut self) -> Result<String, ParseError> {
@@ -281,19 +291,19 @@ mod tests {
         struct Test {
             input: String,
             expected_operator: Token,
-            expected_integer: i64,
+            expected_integer: Token,
         }
 
         let tests = vec![
             Test {
                 input: "!5;".to_string(),
                 expected_operator: Token::Bang,
-                expected_integer: 5,
+                expected_integer: Token::Int(5),
             },
             Test {
                 input: "-15;".to_string(),
                 expected_operator: Token::Minus,
-                expected_integer: 15,
+                expected_integer: Token::Int(15),
             },
         ];
 
@@ -309,6 +319,14 @@ mod tests {
             match statements.next().unwrap() {
                 Statement::ExpressionStatement(stmt) => match stmt {
                     Expression::Prefix(prefix) => {
+                        match &prefix.right {
+                            Expression::IntegerLiteral(int_lit) => {
+                                assert_eq!(t.expected_integer, int_lit.value);
+                            }
+                            _ => {
+                                panic!("expected int literal!")
+                            }
+                        }
                         assert_eq!(t.expected_operator, prefix.value);
                     }
                     _ => {
@@ -316,9 +334,11 @@ mod tests {
                     }
                 },
                 _ => {
-                    panic!("didnt receive a statement expression!")
+                    panic!("didnt receive an expression statement!")
                 }
             }
         }
     }
 }
+
+// TODO: create some test helpers
