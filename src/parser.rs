@@ -1,12 +1,13 @@
 use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
-    Expression, IdentExpression, IntegerLiteralExpression, LetStatement, PrefixExpression, Program,
-    ReturnStatement, Statement,
+    Expression, IdentExpression, InfixExpression, IntegerLiteralExpression, LetStatement,
+    PrefixExpression, Program, ReturnStatement, Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::token::Token::{Assign, Eof};
-use std::borrow::BorrowMut;
+use std::borrow::{Borrow, BorrowMut};
+use std::collections::HashMap;
 use std::error::Error;
 
 // TODO: might be nice to add metadata to parse error, like line number
@@ -21,6 +22,20 @@ const SUM: Precedence = 4; // +
 const PRODUCT: Precedence = 5; // *
 const PREFIX: Precedence = 6; // -X or !X
 const CALL: Precedence = 7; // myFunction(X)
+
+const PRECEDENCE_TABLE: HashMap<Token, Precedence> = [
+    (Token::EQ, EQUALS),
+    (Token::NEQ, EQUALS),
+    (Token::LT, LESS_GREATER),
+    (Token::GT, LESS_GREATER),
+    (Token::Plus, SUM),
+    (Token::Minus, SUM),
+    (Token::Slash, PRODUCT),
+    (Token::Asterisk, PRODUCT),
+]
+.iter()
+.cloned()
+.collect();
 
 struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -44,6 +59,20 @@ impl<'a> Parser<'a> {
     fn advance_tokens(&mut self) {
         self.curr_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
+    }
+
+    fn peek_precedence(&self) -> Precedence {
+        match PRECEDENCE_TABLE.get(&self.peek_token) {
+            Ok(p) => p,
+            Err(_) => LOWEST,
+        }
+    }
+
+    fn curr_precedence(&self) -> Precedence {
+        match PRECEDENCE_TABLE.get(&self.curr_token) {
+            Ok(p) => p,
+            Err(_) => LOWEST,
+        }
     }
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
@@ -107,15 +136,41 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
+    fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
+        // check prefix
+        let mut left: Option<Expression> = None;
+
         match self.curr_token.clone() {
-            Token::Ident(literal) => Ok(self.parse_ident(literal)),
-            Token::Int(literal) => Ok(self.parse_int_literal(literal)),
-            Token::Bang | Token::Minus => Ok(self.parse_prefix_expression()),
+            Token::Ident(literal) => left = Some(self.parse_ident(literal)),
+            Token::Int(literal) => left = Some(self.parse_int_literal(literal)),
+            Token::Bang | Token::Minus => left = Some(self.parse_prefix_expression()),
             _ => Err(format!(
                 "while parsing expression: {:?} expression token not supported",
                 self.curr_token
             )),
+        }
+        match left {
+            None => Err(format!("couldnt match expression")),
+            Some(l) => {
+                if !(&self.peek_token == Token::Semicolon) && precedence < self.peek_precedence() {
+                    match &self.peek_token {
+                        Token::Plus
+                        | Token::Minus
+                        | Token::Slash
+                        | Token::Asterisk
+                        | Token::EQ
+                        | Token::NEQ
+                        | Token::GT
+                        | Token::LT => {
+                            self.advance_tokens();
+                            let adjusted_l = self.parse_infix_expression(l);
+                            Ok(adjusted_l)
+                        }
+                        _ => Ok(l),
+                    }
+                }
+                Ok(l)
+            }
         }
     }
 
@@ -133,9 +188,18 @@ impl<'a> Parser<'a> {
         let tok = self.curr_token.clone();
         self.advance_tokens();
         // TODO: fix this
-        let exp = self.parse_expression().unwrap();
+        let exp = self.parse_expression(LOWEST).unwrap(); // todo: check this precedence
         let prefix_exp = PrefixExpression::new(tok, exp);
         return Expression::Prefix(Box::new(prefix_exp));
+    }
+
+    fn parse_infix_expression(&mut self, exp: Expression) -> Expression {
+        let operator = self.curr_token.clone();
+        let p = self.curr_precedence();
+        self.advance_tokens();
+        let right = self.parse_expression(p).unwrap(); // TODO: better error handling
+        let infix = InfixExpression::new(operator, exp, right);
+        Expression::Infix(Box::new(infix))
     }
 
     fn expect_ident(&mut self) -> Result<String, ParseError> {
