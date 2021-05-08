@@ -319,6 +319,7 @@ mod tests {
             match statements.next().unwrap() {
                 Statement::ExpressionStatement(stmt) => match stmt {
                     Expression::Prefix(prefix) => {
+                        assert_eq!(t.expected_operator, prefix.prefix);
                         match &prefix.right {
                             Expression::IntegerLiteral(int_lit) => {
                                 assert_eq!(t.expected_integer, int_lit.value);
@@ -327,14 +328,114 @@ mod tests {
                                 panic!("expected int literal!")
                             }
                         }
-                        assert_eq!(t.expected_operator, prefix.value);
                     }
                     _ => {
-                        panic!("didnt receive a prefix expression!")
+                        panic!("expected a prefix expression!")
                     }
                 },
                 _ => {
-                    panic!("didnt receive an expression statement!")
+                    panic!("expected expression statement!")
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn parse_infix_expression() {
+        struct Test {
+            input: String,
+            expected_left: Token,
+            expected_operator: Token,
+            expected_right: Token,
+        }
+
+        let tests = vec![
+            Test {
+                input: "5 + 5;".to_string(),
+                expected_left: Token::Int(5),
+                expected_operator: Token::Plus,
+                expected_right: Token::Int(5),
+            },
+            Test {
+                input: "5 - 5;".to_string(),
+                expected_left: Token::Int(5),
+                expected_operator: Token::Minus,
+                expected_right: Token::Int(5),
+            },
+            Test {
+                input: "5 * 5;".to_string(),
+                expected_left: Token::Int(5),
+                expected_operator: Token::Asterisk,
+                expected_right: Token::Int(5),
+            },
+            Test {
+                input: "5 / 5;".to_string(),
+                expected_left: Token::Int(5),
+                expected_operator: Token::Slash,
+                expected_right: Token::Int(5),
+            },
+            Test {
+                input: "5 > 5;".to_string(),
+                expected_left: Token::Int(5),
+                expected_operator: Token::GT,
+                expected_right: Token::Int(5),
+            },
+            Test {
+                input: "5 < 5;".to_string(),
+                expected_left: Token::Int(5),
+                expected_operator: Token::LT,
+                expected_right: Token::Int(5),
+            },
+            Test {
+                input: "5 == 5;".to_string(),
+                expected_left: Token::Int(5),
+                expected_operator: Token::EQ,
+                expected_right: Token::Int(5),
+            },
+            Test {
+                input: "5 != 5;".to_string(),
+                expected_left: Token::Int(5),
+                expected_operator: Token::NEQ,
+                expected_right: Token::Int(5),
+            },
+        ];
+
+        for t in tests {
+            let l = Lexer::new(t.input.as_str());
+            let mut parser = Parser::new(l);
+            let program = parser.parse_program();
+
+            assert_eq!(1, program.statements.len());
+            assert_eq!(0, parser.errors.len());
+
+            let mut statements = program.statements.iter();
+            match statements.next().unwrap() {
+                Statement::ExpressionStatement(stmt) => match stmt {
+                    Expression::Infix(infix) => {
+                        assert_eq!(t.expected_operator, infix.operator);
+                        match &infix.right {
+                            Expression::IntegerLiteral(int_lit) => {
+                                assert_eq!(t.expected_right, int_lit.value);
+                            }
+                            _ => {
+                                panic!("expected int literal!")
+                            }
+                        }
+                        match &infix.left {
+                            Expression::IntegerLiteral(int_lit) => {
+                                assert_eq!(t.expected_left, int_lit.value);
+                            }
+                            _ => {
+                                panic!("expected int literal!")
+                            }
+                        }
+                    }
+                    _ => {
+                        panic!("expected a prefix expression!")
+                    }
+                },
+                _ => {
+                    panic!("expected expression statement!")
                 }
             }
         }

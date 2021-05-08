@@ -12,6 +12,7 @@ pub enum Expression {
     Ident(Box<IdentExpression>),
     IntegerLiteral(Box<IntegerLiteralExpression>),
     Prefix(Box<PrefixExpression>),
+    Infix(Box<InfixExpression>),
 }
 
 // root node
@@ -76,13 +77,30 @@ impl IntegerLiteralExpression {
 }
 
 pub struct PrefixExpression {
-    pub value: Token, // prefix token
+    pub prefix: Token, // prefix token, ! or -
     pub right: Expression,
 }
 
 impl PrefixExpression {
-    pub fn new(value: Token, exp: Expression) -> Self {
-        // TODO: might change this input
-        PrefixExpression { value, right: exp }
+    pub fn new(prefix: Token, exp: Expression) -> Self {
+        // TODO: could validate token to ensure its prefix token
+        PrefixExpression { prefix, right: exp }
+    }
+}
+
+pub struct InfixExpression {
+    pub right: Expression,
+    pub operator: Token, // various operator tokens
+    pub left: Expression,
+}
+
+impl InfixExpression {
+    pub fn new(operator: Token, left: Expression, right: Expression) -> Self {
+        // TODO: validate token
+        InfixExpression {
+            right,
+            operator,
+            left,
+        }
     }
 }
