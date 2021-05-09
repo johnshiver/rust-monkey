@@ -1,6 +1,8 @@
 // AST consists solely of nodes, some statement some expression
 
 use crate::token::Token;
+use std::fmt;
+use std::fmt::Formatter;
 
 pub enum Statement {
     Let(Box<LetStatement>),
@@ -13,6 +15,17 @@ pub enum Expression {
     IntegerLiteral(Box<IntegerLiteralExpression>),
     Prefix(Box<PrefixExpression>),
     Infix(Box<InfixExpression>),
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+        match self {
+            Expression::Ident(ifx) => ifx.ToString(),
+            Expression::IntegerLiteral(ifx) => ifx.ToString(),
+            Expression::Prefix(ifx) => ifx.ToString(),
+            Expression::Infix(ifx) => ifx.ToString(),
+        }
+    }
 }
 
 // root node
@@ -102,5 +115,15 @@ impl InfixExpression {
             operator,
             left,
         }
+    }
+}
+
+impl fmt::Display for InfixExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+        write!(f, "(");
+        write!(f, "{}", self.left);
+        write!(f, " {} ", self.op);
+        write!(f, "{}", self.right);
+        write!(f, ")")
     }
 }
