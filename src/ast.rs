@@ -10,6 +10,16 @@ pub enum Statement {
     ExpressionStatement(Expression),
 }
 
+impl fmt::Display for Statement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+        match self {
+            Statement::Let(l) => write!(f, "{}", l),
+            Statement::Return(r) => write!(f, "{}", r),
+            Statement::ExpressionStatement(es) => write!("{}", es),
+        }
+    }
+}
+
 pub enum Expression {
     Ident(Box<IdentExpression>),
     IntegerLiteral(Box<IntegerLiteralExpression>),
@@ -20,10 +30,10 @@ pub enum Expression {
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
         match self {
-            Expression::Ident(ifx) => ifx.ToString(),
-            Expression::IntegerLiteral(ifx) => ifx.ToString(),
-            Expression::Prefix(ifx) => ifx.ToString(),
-            Expression::Infix(ifx) => ifx.ToString(),
+            Expression::Ident(idt) => write!(f, "{}", idt),
+            Expression::IntegerLiteral(il) => write!(f, "{}", il),
+            Expression::Prefix(pfx) => write!(f, "{}", pfx),
+            Expression::Infix(ifx) => write!(f, "{}", ifx),
         }
     }
 }
@@ -41,6 +51,15 @@ impl Program {
     }
 }
 
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+        for statement in self.statements {
+            write!(f, "{}", statement);
+        }
+        write!(f, "\n")
+    }
+}
+
 pub struct LetStatement {
     pub name: Token,
     pub value: Option<Expression>,
@@ -50,6 +69,16 @@ impl LetStatement {
     pub fn new(name: String, value: Option<Expression>) -> Self {
         let tok = Token::Ident(name);
         LetStatement { name: tok, value }
+    }
+}
+
+impl fmt::Display for LetStatement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+        write!(f, "let {} =", self.name);
+        match self.value.as_ref() {
+            Some(e) => write!(f, " {};", e),
+            None => write!(f, ";"),
+        }
     }
 }
 
@@ -98,6 +127,12 @@ impl PrefixExpression {
     pub fn new(prefix: Token, exp: Expression) -> Self {
         // TODO: could validate token to ensure its prefix token
         PrefixExpression { prefix, right: exp }
+    }
+}
+
+impl fmt::Display for PrefixExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+        write!(f, "{}{};", self.prefix, self.right)
     }
 }
 
