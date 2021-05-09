@@ -6,9 +6,9 @@ use crate::ast::{
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::token::Token::{Assign, Eof};
-use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
-use std::error::Error;
+
+use lazy_static::lazy_static;
 
 // TODO: might be nice to add metadata to parse error, like line number
 type ParseError = String;
@@ -23,19 +23,21 @@ const PRODUCT: Precedence = 5; // *
 const PREFIX: Precedence = 6; // -X or !X
 const CALL: Precedence = 7; // myFunction(X)
 
-const PRECEDENCE_TABLE: HashMap<Token, Precedence> = [
-    (Token::EQ, EQUALS),
-    (Token::NEQ, EQUALS),
-    (Token::LT, LESS_GREATER),
-    (Token::GT, LESS_GREATER),
-    (Token::Plus, SUM),
-    (Token::Minus, SUM),
-    (Token::Slash, PRODUCT),
-    (Token::Asterisk, PRODUCT),
-]
-.iter()
-.cloned()
-.collect();
+lazy_static! {
+    static ref PRECEDENCE_TABLE: HashMap<Token, Precedence> = [
+        (Token::EQ, EQUALS),
+        (Token::NEQ, EQUALS),
+        (Token::LT, LESS_GREATER),
+        (Token::GT, LESS_GREATER),
+        (Token::Plus, SUM),
+        (Token::Minus, SUM),
+        (Token::Slash, PRODUCT),
+        (Token::Asterisk, PRODUCT),
+    ]
+    .iter()
+    .cloned()
+    .collect();
+}
 
 struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -63,15 +65,15 @@ impl<'a> Parser<'a> {
 
     fn peek_precedence(&self) -> Precedence {
         match PRECEDENCE_TABLE.get(&self.peek_token) {
-            Ok(p) => p,
-            Err(_) => LOWEST,
+            Some(p) => *p,
+            None => LOWEST,
         }
     }
 
     fn curr_precedence(&self) -> Precedence {
         match PRECEDENCE_TABLE.get(&self.curr_token) {
-            Ok(p) => p,
-            Err(_) => LOWEST,
+            Some(p) => *p,
+            None => LOWEST,
         }
     }
 
@@ -126,7 +128,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
-        let stmt = self.parse_expression();
+        let stmt = self.parse_expression(LOWEST);
         if self.peek_token == Token::Semicolon {
             self.advance_tokens();
         }
@@ -144,15 +146,15 @@ impl<'a> Parser<'a> {
             Token::Ident(literal) => left = Some(self.parse_ident(literal)),
             Token::Int(literal) => left = Some(self.parse_int_literal(literal)),
             Token::Bang | Token::Minus => left = Some(self.parse_prefix_expression()),
-            _ => Err(format!(
+            _ => left = None,
+        }
+        match left {
+            None => Err(format!(
                 "while parsing expression: {:?} expression token not supported",
                 self.curr_token
             )),
-        }
-        match left {
-            None => Err(format!("couldnt match expression")),
             Some(l) => {
-                if !(&self.peek_token == Token::Semicolon) && precedence < self.peek_precedence() {
+                if !(self.peek_token == Token::Semicolon) && precedence < self.peek_precedence() {
                     match &self.peek_token {
                         Token::Plus
                         | Token::Minus
@@ -168,8 +170,9 @@ impl<'a> Parser<'a> {
                         }
                         _ => Ok(l),
                     }
+                } else {
+                    Ok(l)
                 }
-                Ok(l)
             }
         }
     }
@@ -188,7 +191,7 @@ impl<'a> Parser<'a> {
         let tok = self.curr_token.clone();
         self.advance_tokens();
         // TODO: fix this
-        let exp = self.parse_expression(LOWEST).unwrap(); // todo: check this precedence
+        let exp = self.parse_expression(PREFIX).unwrap(); // todo: check this precedence
         let prefix_exp = PrefixExpression::new(tok, exp);
         return Expression::Prefix(Box::new(prefix_exp));
     }
@@ -231,14 +234,11 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Expression, IntegerLiteralExpression, Statement};
+    use crate::ast::{Expression, Statement};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::token::Token;
     use crate::token::Token::Return;
-    use std::borrow::Borrow;
-    use std::ops::Deref;
-    use Expression::Ident;
 
     #[test]
     fn let_statements() {
