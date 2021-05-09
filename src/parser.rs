@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
             Err(e) => self.errors.push(e),
         };
 
-        let mut stmt = LetStatement::new(name, None);
+        let stmt = LetStatement::new(name, None);
 
         if self.peek_token != Assign {
             self.errors.push(format!(
@@ -117,7 +117,7 @@ impl<'a> Parser<'a> {
 
     fn parse_return(&mut self) -> Statement {
         // current token is return
-        let mut stmt = ReturnStatement::new(None);
+        let stmt = ReturnStatement::new(None);
 
         self.advance_tokens();
         // eventually will have to parse the Expression
@@ -139,42 +139,40 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
-        // check prefix
         let mut left: Option<Expression> = None;
-
+        // check prefix
         match self.curr_token.clone() {
             Token::Ident(literal) => left = Some(self.parse_ident(literal)),
             Token::Int(literal) => left = Some(self.parse_int_literal(literal)),
             Token::Bang | Token::Minus => left = Some(self.parse_prefix_expression()),
             _ => left = None,
         }
-        match left {
-            None => Err(format!(
+
+        if left.is_none() {
+            return Err(format!(
                 "while parsing expression: {:?} expression token not supported",
                 self.curr_token
-            )),
-            Some(l) => {
-                if !(self.peek_token == Token::Semicolon) && precedence < self.peek_precedence() {
-                    match &self.peek_token {
-                        Token::Plus
-                        | Token::Minus
-                        | Token::Slash
-                        | Token::Asterisk
-                        | Token::EQ
-                        | Token::NEQ
-                        | Token::GT
-                        | Token::LT => {
-                            self.advance_tokens();
-                            let adjusted_l = self.parse_infix_expression(l);
-                            Ok(adjusted_l)
-                        }
-                        _ => Ok(l),
-                    }
-                } else {
-                    Ok(l)
+            ));
+        }
+
+        let mut l = left.unwrap();
+        while !(self.peek_token == Token::Semicolon) && precedence < self.peek_precedence() {
+            match &self.peek_token {
+                Token::Plus
+                | Token::Minus
+                | Token::Slash
+                | Token::Asterisk
+                | Token::EQ
+                | Token::NEQ
+                | Token::GT
+                | Token::LT => {
+                    self.advance_tokens();
+                    l = self.parse_infix_expression(l);
                 }
+                _ => break,
             }
         }
+        Ok(l)
     }
 
     fn parse_ident(&mut self, literal: String) -> Expression {
@@ -276,7 +274,7 @@ mod tests {
         ";
         let l = Lexer::new(input);
         let mut p = Parser::new(l);
-        let program = p.parse_program();
+        p.parse_program();
         assert_eq!(p.errors.len(), 4);
     }
 
