@@ -381,7 +381,7 @@ mod tests {
             match statements.next().unwrap() {
                 Statement::ExpressionStatement(stmt) => match stmt {
                     Expression::Prefix(prefix) => {
-                        assert_eq!(t.expected_operator, prefix.prefix);
+                        assert_eq!(t.expected_operator, prefix.prefix_operator);
                         match &prefix.right {
                             Expression::IntegerLiteral(int_lit) => {
                                 assert_eq!(t.expected_integer, int_lit.value);
@@ -500,6 +500,72 @@ mod tests {
                     panic!("expected expression statement!")
                 }
             }
+        }
+    }
+
+    #[test]
+    fn test_program_display() {
+        struct Test {
+            input: String,
+            expected: String,
+        }
+
+        let tests = vec![
+            Test {
+                input: "-a * b".to_string(),
+                expected: "((-a) * b)".to_string(),
+            },
+            Test {
+                input: "!-a".to_string(),
+                expected: "(!(-a))".to_string(),
+            },
+            Test {
+                input: "a + b + c".to_string(),
+                expected: "((a + b) + c)".to_string(),
+            },
+            Test {
+                input: "a + b - c".to_string(),
+                expected: "((a + b) - c)".to_string(),
+            },
+            Test {
+                input: "a * b * c".to_string(),
+                expected: "((a * b) * c)".to_string(),
+            },
+            Test {
+                input: "a * b / c".to_string(),
+                expected: "((a * b) / c)".to_string(),
+            },
+            Test {
+                input: "a + b / c".to_string(),
+                expected: "(a + (b / c))".to_string(),
+            },
+            Test {
+                input: "a + b * c + d / e - f".to_string(),
+                expected: "(((a + (b * c)) + (d / e)) - f)".to_string(),
+            },
+            Test {
+                input: "3 + 4; -5 * 5".to_string(),
+                expected: "(3 + 4)((-5) * 5)".to_string(),
+            },
+            Test {
+                input: "5 > 4 == 3 < 4".to_string(),
+                expected: "((5 > 4) == (3 < 4))".to_string(),
+            },
+            Test {
+                input: "5 < 4 != 3 > 4".to_string(),
+                expected: "((5 < 4) != (3 > 4))".to_string(),
+            },
+            Test {
+                input: "3 + 4 * 5 == 3 * 1 + 4 * 5".to_string(),
+                expected: "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))".to_string(),
+            },
+        ];
+
+        for t in tests {
+            let l = Lexer::new(t.input.as_str());
+            let mut parser = Parser::new(l);
+            let program = parser.parse_program();
+            assert_eq!(t.expected, program.to_string());
         }
     }
 }

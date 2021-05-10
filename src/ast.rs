@@ -11,11 +11,11 @@ pub enum Statement {
 }
 
 impl fmt::Display for Statement {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             Statement::Let(l) => write!(f, "{}", l),
             Statement::Return(r) => write!(f, "{}", r),
-            Statement::ExpressionStatement(es) => write!("{}", es),
+            Statement::ExpressionStatement(es) => write!(f, "{}", es),
         }
     }
 }
@@ -28,7 +28,7 @@ pub enum Expression {
 }
 
 impl fmt::Display for Expression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             Expression::Ident(idt) => write!(f, "{}", idt),
             Expression::IntegerLiteral(il) => write!(f, "{}", il),
@@ -52,11 +52,11 @@ impl Program {
 }
 
 impl fmt::Display for Program {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
-        for statement in self.statements {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        for statement in &self.statements {
             write!(f, "{}", statement);
         }
-        write!(f, "\n")
+        write!(f, "")
     }
 }
 
@@ -73,7 +73,7 @@ impl LetStatement {
 }
 
 impl fmt::Display for LetStatement {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "let {} =", self.name);
         match self.value.as_ref() {
             Some(e) => write!(f, " {};", e),
@@ -96,6 +96,16 @@ impl ReturnStatement {
     }
 }
 
+impl fmt::Display for ReturnStatement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "return ");
+        match self.value.as_ref() {
+            Some(e) => write!(f, " {};", e),
+            None => write!(f, ";"),
+        }
+    }
+}
+
 pub struct IdentExpression {
     pub value: Token, // return token
 }
@@ -104,6 +114,12 @@ impl IdentExpression {
     pub fn new(value: String) -> Self {
         let tok = Token::Ident(value);
         IdentExpression { value: tok }
+    }
+}
+
+impl fmt::Display for IdentExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -118,21 +134,30 @@ impl IntegerLiteralExpression {
     }
 }
 
+impl fmt::Display for IntegerLiteralExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
 pub struct PrefixExpression {
-    pub prefix: Token, // prefix token, ! or -
+    pub prefix_operator: Token, // prefix token, ! or -
     pub right: Expression,
 }
 
 impl PrefixExpression {
     pub fn new(prefix: Token, exp: Expression) -> Self {
         // TODO: could validate token to ensure its prefix token
-        PrefixExpression { prefix, right: exp }
+        PrefixExpression {
+            prefix_operator: prefix,
+            right: exp,
+        }
     }
 }
 
 impl fmt::Display for PrefixExpression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
-        write!(f, "{}{};", self.prefix, self.right)
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "({}{})", self.prefix_operator, self.right)
     }
 }
 
@@ -154,10 +179,10 @@ impl InfixExpression {
 }
 
 impl fmt::Display for InfixExpression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "(");
         write!(f, "{}", self.left);
-        write!(f, " {} ", self.op);
+        write!(f, " {} ", self.operator);
         write!(f, "{}", self.right);
         write!(f, ")")
     }

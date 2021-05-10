@@ -46,7 +46,7 @@ pub enum Token {
 }
 
 impl fmt::Display for Token {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<T, E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             Token::Illegal => write!(f, "ILLEGAL"),
             Token::Eof => write!(f, "EOF"),
