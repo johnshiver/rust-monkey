@@ -1,7 +1,7 @@
 use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
-    Expression, IdentExpression, InfixExpression, IntegerLiteralExpression, LetStatement,
-    PrefixExpression, Program, ReturnStatement, Statement,
+    BooleanLiteralExpression, Expression, IdentExpression, InfixExpression,
+    IntegerLiteralExpression, LetStatement, PrefixExpression, Program, ReturnStatement, Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
@@ -144,6 +144,9 @@ impl<'a> Parser<'a> {
         match self.curr_token.clone() {
             Token::Ident(literal) => left = Some(self.parse_ident(literal)),
             Token::Int(literal) => left = Some(self.parse_int_literal(literal)),
+            Token::True | Token::False => {
+                left = Some(self.parse_bool_literal(self.curr_token.clone()))
+            }
             Token::Bang | Token::Minus => left = Some(self.parse_prefix_expression()),
             _ => left = None,
         }
@@ -183,6 +186,11 @@ impl<'a> Parser<'a> {
     fn parse_int_literal(&mut self, literal: i64) -> Expression {
         let ie = IntegerLiteralExpression::new(literal);
         return Expression::IntegerLiteral(Box::new(ie));
+    }
+
+    fn parse_bool_literal(&mut self, val: Token) -> Expression {
+        let ie = BooleanLiteralExpression::new(val);
+        return Expression::BoolLiteral(Box::new(ie));
     }
 
     fn parse_prefix_expression(&mut self) -> Expression {
@@ -340,6 +348,30 @@ mod tests {
                 }
                 _ => {
                     panic!("didnt receive a integer literal expression!")
+                }
+            },
+            _ => {
+                panic!("didnt receive a statement expression!")
+            }
+        }
+    }
+
+    #[test]
+    fn parse_bool_literal() {
+        let input = "true;";
+        let l = Lexer::new(input);
+        let mut p = Parser::new(l);
+        let program = p.parse_program();
+        assert_eq!(program.statements.len(), 1);
+        assert_eq!(p.errors.len(), 0);
+        let mut statements = program.statements.iter();
+        match statements.next().unwrap() {
+            Statement::ExpressionStatement(stmt) => match stmt {
+                Expression::BoolLiteral(ident) => {
+                    assert_eq!(Token::True, ident.value);
+                }
+                _ => {
+                    panic!("didnt receive a bool literal expression!")
                 }
             },
             _ => {

@@ -23,6 +23,7 @@ impl fmt::Display for Statement {
 pub enum Expression {
     Ident(Box<IdentExpression>),
     IntegerLiteral(Box<IntegerLiteralExpression>),
+    BoolLiteral(Box<BooleanLiteralExpression>),
     Prefix(Box<PrefixExpression>),
     Infix(Box<InfixExpression>),
 }
@@ -32,6 +33,7 @@ impl fmt::Display for Expression {
         match self {
             Expression::Ident(idt) => write!(f, "{}", idt),
             Expression::IntegerLiteral(il) => write!(f, "{}", il),
+            Expression::BoolLiteral(il) => write!(f, "{}", il),
             Expression::Prefix(pfx) => write!(f, "{}", pfx),
             Expression::Infix(ifx) => write!(f, "{}", ifx),
         }
@@ -135,6 +137,22 @@ impl IntegerLiteralExpression {
 }
 
 impl fmt::Display for IntegerLiteralExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
+pub struct BooleanLiteralExpression {
+    pub value: Token,
+}
+
+impl BooleanLiteralExpression {
+    pub fn new(value: Token) -> Self {
+        return BooleanLiteralExpression { value };
+    }
+}
+
+impl fmt::Display for BooleanLiteralExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.value)
     }
