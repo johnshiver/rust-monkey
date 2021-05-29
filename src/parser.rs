@@ -517,6 +517,9 @@ mod tests {
                             Expression::IntegerLiteral(int_lit) => {
                                 assert_eq!(t.expected_right, int_lit.value);
                             }
+                            Expression::BoolLiteral(bool_lit) => {
+                                assert_eq!(t.expected_right, bool_lit.value)
+                            }
                             _ => {
                                 panic!("expected int literal!")
                             }
@@ -525,8 +528,11 @@ mod tests {
                             Expression::IntegerLiteral(int_lit) => {
                                 assert_eq!(t.expected_left, int_lit.value);
                             }
+                            Expression::BoolLiteral(bool_lit) => {
+                                assert_eq!(t.expected_left, bool_lit.value)
+                            }
                             _ => {
-                                panic!("expected int literal!")
+                                panic!("received unexpected expression!")
                             }
                         }
                     }
