@@ -385,19 +385,29 @@ mod tests {
         struct Test {
             input: String,
             expected_operator: Token,
-            expected_integer: Token,
+            expected_val: Token,
         }
 
         let tests = vec![
             Test {
                 input: "!5;".to_string(),
                 expected_operator: Token::Bang,
-                expected_integer: Token::Int(5),
+                expected_val: Token::Int(5),
             },
             Test {
                 input: "-15;".to_string(),
                 expected_operator: Token::Minus,
-                expected_integer: Token::Int(15),
+                expected_val: Token::Int(15),
+            },
+            Test {
+                input: "!true;".to_string(),
+                expected_operator: Token::Bang,
+                expected_val: Token::True,
+            },
+            Test {
+                input: "!false;".to_string(),
+                expected_operator: Token::Bang,
+                expected_val: Token::False,
             },
         ];
 
@@ -416,7 +426,10 @@ mod tests {
                         assert_eq!(t.expected_operator, prefix.prefix_operator);
                         match &prefix.right {
                             Expression::IntegerLiteral(int_lit) => {
-                                assert_eq!(t.expected_integer, int_lit.value);
+                                assert_eq!(t.expected_val, int_lit.value);
+                            }
+                            Expression::BoolLiteral(bool_lit) => {
+                                assert_eq!(t.expected_val, bool_lit.value);
                             }
                             _ => {
                                 panic!("expected int literal!")
