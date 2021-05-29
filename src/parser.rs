@@ -492,6 +492,12 @@ mod tests {
                 expected_operator: Token::NEQ,
                 expected_right: Token::Int(5),
             },
+            Test {
+                input: "true == true;".to_string(),
+                expected_left: Token::True,
+                expected_operator: Token::EQ,
+                expected_right: Token::True,
+            },
         ];
 
         for t in tests {
@@ -590,6 +596,22 @@ mod tests {
             Test {
                 input: "3 + 4 * 5 == 3 * 1 + 4 * 5".to_string(),
                 expected: "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))".to_string(),
+            },
+            Test {
+                input: "true".to_string(),
+                expected: "true".to_string(),
+            },
+            Test {
+                input: "false".to_string(),
+                expected: "false".to_string(),
+            },
+            Test {
+                input: "3 > 5 == false".to_string(),
+                expected: "((3 > 5) == false)".to_string(),
+            },
+            Test {
+                input: "3 < 5 == true".to_string(),
+                expected: "((3 < 5) == true)".to_string(),
             },
         ];
 
