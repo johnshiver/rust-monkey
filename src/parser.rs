@@ -12,6 +12,10 @@ use lazy_static::lazy_static;
 
 // TODO: might be nice to add metadata to parse error, like line number
 type ParseError = String;
+type ParseErrors = Vec<ParseError>;
+pub type ParseResult<T> = Result<T, ParseError>;
+type PrefixFn = fn(parser: &mut Parser<'_>) -> ParseResult<Expression>;
+type InfixFn = fn(parser: &mut Parser<'_>, left: Expression) -> ParseResult<Expression>;
 
 // define operator precedence
 type Precedence = i8;
@@ -63,6 +67,27 @@ impl<'a> Parser<'a> {
         self.peek_token = self.lexer.next_token();
     }
 
+    fn peek_token_is(&self, tok: &Token) -> bool {
+        match (&tok, &self.peek_token) {
+            (Token::Ident(_), Token::Ident(_)) => true,
+            (Token::Int(_), Token::Int(_)) => true,
+            _ => tok == &self.peek_token,
+        }
+    }
+
+    fn expect_peek(&mut self, tok: Token) -> Result<(), ParseError> {
+        match self.peek_token_is(&tok) {
+            true => {
+                self.advance_tokens();
+                Ok(())
+            }
+            false => Err(format!(
+                "expected next token to be {} got {} instead",
+                tok, self.peek_token
+            )),
+        }
+    }
+
     fn peek_precedence(&self) -> Precedence {
         match PRECEDENCE_TABLE.get(&self.peek_token) {
             Some(p) => *p,
@@ -89,42 +114,6 @@ impl<'a> Parser<'a> {
             }
             _ => self.parse_expression_statement(),
         }
-    }
-
-    fn parse_let(&mut self) -> Statement {
-        // next token should be an identifier
-        let mut name = "".to_string();
-        match self.expect_ident() {
-            Ok(n) => name = n,
-            Err(e) => self.errors.push(e),
-        };
-
-        let stmt = LetStatement::new(name, None);
-
-        if self.peek_token != Assign {
-            self.errors.push(format!(
-                "expected assign token, received {:?}",
-                self.peek_token
-            ));
-        }
-
-        // eventually will have to parse the Expression
-        while self.curr_token != Token::Semicolon {
-            self.advance_tokens();
-        }
-        Let(Box::new(stmt))
-    }
-
-    fn parse_return(&mut self) -> Statement {
-        // current token is return
-        let stmt = ReturnStatement::new(None);
-
-        self.advance_tokens();
-        // eventually will have to parse the Expression
-        while self.curr_token != Token::Semicolon {
-            self.advance_tokens();
-        }
-        Return(Box::new(stmt))
     }
 
     fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
@@ -179,6 +168,42 @@ impl<'a> Parser<'a> {
         Ok(l)
     }
 
+    fn parse_let(&mut self) -> Statement {
+        // next token should be an identifier
+        let mut name = "".to_string();
+        match self.expect_ident() {
+            Ok(n) => name = n,
+            Err(e) => self.errors.push(e),
+        };
+
+        let stmt = LetStatement::new(name, None);
+
+        if self.peek_token != Assign {
+            self.errors.push(format!(
+                "expected assign token, received {:?}",
+                self.peek_token
+            ));
+        }
+
+        // eventually will have to parse the Expression
+        while self.curr_token != Token::Semicolon {
+            self.advance_tokens();
+        }
+        Let(Box::new(stmt))
+    }
+
+    fn parse_return(&mut self) -> Statement {
+        // current token is return
+        let stmt = ReturnStatement::new(None);
+
+        self.advance_tokens();
+        // eventually will have to parse the Expression
+        while self.curr_token != Token::Semicolon {
+            self.advance_tokens();
+        }
+        Return(Box::new(stmt))
+    }
+
     fn parse_ident(&mut self, literal: String) -> Expression {
         let ie = IdentExpression::new(literal);
         Expression::Ident(Box::new(ie))
@@ -197,13 +222,7 @@ impl<'a> Parser<'a> {
     fn parse_grouped_expression(&mut self) -> Expression {
         self.advance_tokens();
         let exp = self.parse_expression(LOWEST).unwrap();
-
-        if self.peek_token != Rparen {
-            self.errors.push(format!(
-                "expected assign token, received {:?}",
-                self.peek_token
-            ));
-        }
+        self.expect_peek(Token::Rparen).unwrap();
 
         exp
     }
@@ -594,90 +613,90 @@ mod tests {
         }
 
         let tests = vec![
-            // Test {
-            //     input: "-a * b",
-            //     expected: "((-a) * b)",
-            // },
-            //     Test {
-            //         input: "!-a",
-            //         expected: "(!(-a))",
-            //     },
-            //     Test {
-            //         input: "a + b + c",
-            //         expected: "((a + b) + c)",
-            //     },
-            //     Test {
-            //         input: "a + b - c",
-            //         expected: "((a + b) - c)",
-            //     },
-            //     Test {
-            //         input: "a * b * c",
-            //         expected: "((a * b) * c)",
-            //     },
-            //     Test {
-            //         input: "a * b / c",
-            //         expected: "((a * b) / c)",
-            //     },
-            // Test {
-            //     input: "a + b / c",
-            //     expected: "(a + (b / c))",
-            // },
-            //     Test {
-            //         input: "a + b * c + d / e - f",
-            //         expected: "(((a + (b * c)) + (d / e)) - f)",
-            //     },
-            //     Test {
-            //         input: "3 + 4; -5 * 5",
-            //         expected: "(3 + 4)((-5) * 5)",
-            //     },
-            //     Test {
-            //         input: "5 > 4 == 3 < 4",
-            //         expected: "((5 > 4) == (3 < 4))",
-            //     },
-            //     Test {
-            //         input: "5 < 4 != 3 > 4",
-            //         expected: "((5 < 4) != (3 > 4))",
-            //     },
-            //     Test {
-            //         input: "3 + 4 * 5 == 3 * 1 + 4 * 5",
-            //         expected: "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
-            //     },
-            //     Test {
-            //         input: "true",
-            //         expected: "true",
-            //     },
-            //     Test {
-            //         input: "false",
-            //         expected: "false",
-            //     },
+            Test {
+                input: "-a * b",
+                expected: "((-a) * b)",
+            },
+            Test {
+                input: "!-a",
+                expected: "(!(-a))",
+            },
+            Test {
+                input: "a + b + c",
+                expected: "((a + b) + c)",
+            },
+            Test {
+                input: "a + b - c",
+                expected: "((a + b) - c)",
+            },
+            Test {
+                input: "a * b * c",
+                expected: "((a * b) * c)",
+            },
+            Test {
+                input: "a * b / c",
+                expected: "((a * b) / c)",
+            },
+            Test {
+                input: "a + b / c",
+                expected: "(a + (b / c))",
+            },
+            Test {
+                input: "a + b * c + d / e - f",
+                expected: "(((a + (b * c)) + (d / e)) - f)",
+            },
+            Test {
+                input: "3 + 4; -5 * 5",
+                expected: "(3 + 4)((-5) * 5)",
+            },
+            Test {
+                input: "5 > 4 == 3 < 4",
+                expected: "((5 > 4) == (3 < 4))",
+            },
+            Test {
+                input: "5 < 4 != 3 > 4",
+                expected: "((5 < 4) != (3 > 4))",
+            },
+            Test {
+                input: "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                expected: "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+            },
+            Test {
+                input: "true",
+                expected: "true",
+            },
+            Test {
+                input: "false",
+                expected: "false",
+            },
             Test {
                 input: "3 > 5 == false",
                 expected: "((3 > 5) == false)",
             },
-            //     Test {
-            //         input: "3 < 5 == true",
-            //         expected: "((3 < 5) == true)",
-            //     },
-            // Test {
-            //     input: "1 + (2 + 3) + 4",
-            //     expected: "((1 + (2 + 3)) + 4)",
-            // },
-            // Test {
-            //     input: "(5 + 5) * 2",
-            //     expected: "((5 + 5) * 2)",
-            // },
-            // Test {
-            //     input: "2 / (5 + 5)",
-            //     expected: "(2 / (5 + 5))",
-            // },
-            // Test {
-            //     input: "-(5 + 5)",
-            //     expected: "(-(5 + 5))",
-            // },
-            // Test {
-            //     input: "!(true == true)",
-            //     expected: "(!(true == true))",
-            // },
+            Test {
+                input: "3 < 5 == true",
+                expected: "((3 < 5) == true)",
+            },
+            Test {
+                input: "1 + (2 + 3) + 4",
+                expected: "((1 + (2 + 3)) + 4)",
+            },
+            Test {
+                input: "(5 + 5) * 2",
+                expected: "((5 + 5) * 2)",
+            },
+            Test {
+                input: "2 / (5 + 5)",
+                expected: "(2 / (5 + 5))",
+            },
+            Test {
+                input: "-(5 + 5)",
+                expected: "(-(5 + 5))",
+            },
+            Test {
+                input: "!(true == true)",
+                expected: "(!(true == true))",
+            },
         ];
 
         for t in tests {
