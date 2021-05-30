@@ -205,3 +205,15 @@ impl fmt::Display for InfixExpression {
         write!(f, ")")
     }
 }
+
+pub struct IfExpression {
+    pub token: Token,
+    pub condition: Expression,
+    pub consequence: BlockStatement,
+    pub alternative: BlockStatement,
+}
+
+pub struct BlockStatement {
+    pub token: Token,
+    pub statements: Vec<Statement>,
+}
