@@ -279,6 +279,7 @@ mod tests {
     use crate::parser::Parser;
     use crate::token::Token;
     use crate::token::Token::Return;
+    use std::ops::Index;
 
     #[test]
     fn let_statements() {
@@ -453,24 +454,14 @@ mod tests {
             assert_eq!(1, program.statements.len());
             assert_eq!(0, parser.errors.len());
 
-            let mut statements = program.statements.iter();
-            match statements.next().unwrap() {
+            let stmt = program.statements.index(0);
+            match stmt {
                 Statement::ExpressionStatement(stmt) => match stmt {
                     Expression::Prefix(prefix) => {
                         // check prefix operator
                         assert_eq!(t.expected_operator, prefix.prefix_operator);
                         // check prefix val
-                        match &prefix.right {
-                            Expression::IntegerLiteral(int_lit) => {
-                                assert_eq!(t.expected_val, int_lit.value);
-                            }
-                            Expression::BoolLiteral(bool_lit) => {
-                                assert_eq!(t.expected_val, bool_lit.value);
-                            }
-                            _ => {
-                                panic!("expected int literal!")
-                            }
-                        }
+                        test_expression_token_value(t.expected_val, &prefix.right);
                     }
                     _ => {
                         panic!("expected a prefix expression!")
@@ -563,41 +554,11 @@ mod tests {
             assert_eq!(1, program.statements.len());
             assert_eq!(0, parser.errors.len());
 
-            let mut statements = program.statements.iter();
-            match statements.next().unwrap() {
-                Statement::ExpressionStatement(stmt) => match stmt {
-                    Expression::Infix(infix) => {
-                        // check operator
-                        assert_eq!(t.expected_operator, infix.operator);
-                        // check right side
-                        match &infix.right {
-                            Expression::IntegerLiteral(int_lit) => {
-                                assert_eq!(t.expected_right, int_lit.value);
-                            }
-                            Expression::BoolLiteral(bool_lit) => {
-                                assert_eq!(t.expected_right, bool_lit.value)
-                            }
-                            _ => {
-                                panic!("unexpected right infix expression")
-                            }
-                        }
-                        // check left side
-                        match &infix.left {
-                            Expression::IntegerLiteral(int_lit) => {
-                                assert_eq!(t.expected_left, int_lit.value);
-                            }
-                            Expression::BoolLiteral(bool_lit) => {
-                                assert_eq!(t.expected_left, bool_lit.value)
-                            }
-                            _ => {
-                                panic!("received left unexpected expression!")
-                            }
-                        }
-                    }
-                    _ => {
-                        panic!("expected an infix expression!")
-                    }
-                },
+            let stmt = program.statements.index(0);
+            match stmt {
+                Statement::ExpressionStatement(exp) => {
+                    test_infix(exp, t.expected_left, t.expected_operator, t.expected_right);
+                }
                 _ => {
                     panic!("expected expression statement!")
                 }
@@ -704,6 +665,68 @@ mod tests {
             let mut parser = Parser::new(l);
             let program = parser.parse_program();
             assert_eq!(t.expected, program.to_string());
+        }
+    }
+
+    #[test]
+    fn parse_if_expression() {
+        let input = "if (x < y) { x }";
+        let l = Lexer::new(input);
+        let mut p = Parser::new(l);
+        let program = p.parse_program();
+        assert_eq!(program.statements.len(), 1);
+        assert_eq!(p.errors.len(), 0);
+        let if_expression = program.statements.index(0);
+        match if_expression {
+            Statement::ExpressionStatement(stmt) => match stmt {
+                Expression::IfStatement(if_stmt) => {
+                    assert_eq!(Token::If, if_stmt.token);
+                    test_infix(
+                        &if_stmt.condition,
+                        Token::LT,
+                        Token::Ident("x".to_string()),
+                        Token::Ident("y".to_string()),
+                    )
+                }
+                _ => {
+                    panic!("didnt receive an if statement!")
+                }
+            },
+            _ => {
+                panic!("didnt receive a statement expression!")
+            }
+        }
+    }
+
+    fn test_infix(exp: &Expression, left: Token, op: Token, right: Token) {
+        match exp {
+            Expression::Infix(infix) => {
+                // check operator
+                assert_eq!(op, infix.operator);
+                // check right side
+                test_expression_token_value(right, &infix.right);
+                test_expression_token_value(left, &infix.left);
+            }
+            _ => {
+                panic!("expected an infix expression!")
+            }
+        }
+    }
+
+    fn test_expression_token_value(expected_token: Token, expression: &Expression) {
+        match expression {
+            Expression::IntegerLiteral(int_lit) => {
+                assert_eq!(expected_token, int_lit.value);
+            }
+            Expression::BoolLiteral(bool_lit) => {
+                assert_eq!(expected_token, bool_lit.value)
+            }
+            Expression::Ident(id) => {
+                assert_eq!(expected_token, id.value)
+            }
+            _ => {
+                panic!("unsupported expression {}", expression)
+            }
         }
     }
 }

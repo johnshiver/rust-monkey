@@ -26,6 +26,8 @@ pub enum Expression {
     BoolLiteral(Box<BooleanLiteralExpression>),
     Prefix(Box<PrefixExpression>),
     Infix(Box<InfixExpression>),
+    IfStatement(Box<IfExpression>),
+    BlockStatement(Box<BlockStatement>),
 }
 
 impl fmt::Display for Expression {
@@ -36,6 +38,8 @@ impl fmt::Display for Expression {
             Expression::BoolLiteral(il) => write!(f, "{}", il),
             Expression::Prefix(pfx) => write!(f, "{}", pfx),
             Expression::Infix(ifx) => write!(f, "{}", ifx),
+            Expression::IfStatement(if_stmt) => write!(f, "{}", if_stmt),
+            Expression::BlockStatement(blk) => write!(f, "{}", blk),
         }
     }
 }
@@ -210,10 +214,57 @@ pub struct IfExpression {
     pub token: Token,
     pub condition: Expression,
     pub consequence: BlockStatement,
-    pub alternative: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+impl IfExpression {
+    pub fn new(
+        token: Token,
+        condition: Expression,
+        consequence: BlockStatement,
+        alternative: Option<BlockStatement>,
+    ) -> Self {
+        IfExpression {
+            token,
+            condition,
+            consequence,
+            alternative,
+        }
+    }
+}
+
+impl fmt::Display for IfExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "if");
+        write!(f, "{}", self.condition.to_string());
+        write!(f, " ");
+        write!(f, "{}", self.consequence.to_string());
+        match &self.alternative {
+            Some(stmt) => {
+                write!(f, "{}", stmt.to_string());
+            }
+            _ => {}
+        }
+        write!(f, "")
+    }
 }
 
 pub struct BlockStatement {
     pub token: Token,
     pub statements: Vec<Statement>,
+}
+
+impl BlockStatement {
+    pub fn new(token: Token, statements: Vec<Statement>) -> Self {
+        BlockStatement { token, statements }
+    }
+}
+
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        for s in &self.statements {
+            write!(f, "{}", s); // TODO: maybe writeln makes more sense
+        }
+        write!(f, "")
+    }
 }
