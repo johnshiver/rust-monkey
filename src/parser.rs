@@ -1,13 +1,15 @@
 use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
-    BooleanLiteralExpression, Expression, IdentExpression, InfixExpression,
-    IntegerLiteralExpression, LetStatement, PrefixExpression, Program, ReturnStatement, Statement,
+    BlockStatement, BooleanLiteralExpression, Expression, IdentExpression, IfExpression,
+    InfixExpression, IntegerLiteralExpression, LetStatement, PrefixExpression, Program,
+    ReturnStatement, Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
-use crate::token::Token::{Assign, Eof, Rparen};
+use crate::token::Token::{Assign, Eof, If, Rparen};
 use std::collections::HashMap;
 
+use crate::ast::Expression::IfStatement;
 use lazy_static::lazy_static;
 
 // TODO: might be nice to add metadata to parse error, like line number
@@ -138,6 +140,7 @@ impl<'a> Parser<'a> {
             }
             Token::Lparen => left = Some(self.parse_grouped_expression()),
             Token::Bang | Token::Minus => left = Some(self.parse_prefix_expression()),
+            Token::If => left = Some(self.parse_if_expression()),
             _ => left = None,
         }
 
@@ -225,6 +228,77 @@ impl<'a> Parser<'a> {
         self.expect_peek(Token::Rparen).unwrap();
 
         exp
+    }
+
+    fn parse_if_expression(&mut self) -> Expression {
+        match self.expect_peek(Token::Lparen) {
+            Ok(()) => {}
+            Err(e) => {
+                // parse error
+            }
+        }
+        self.advance_tokens();
+
+        let condition = self.parse_expression(LOWEST).unwrap();
+
+        match self.expect_peek(Token::Rparen) {
+            Ok(()) => {}
+            Err(e) => {
+                // parse error
+            }
+        }
+
+        match self.expect_peek(Token::Rparen) {
+            Ok(()) => {}
+            Err(e) => {
+                // parse error
+            }
+        }
+
+        match self.expect_peek(Token::Lbrace) {
+            Ok(()) => {}
+            Err(e) => {
+                // parse error
+            }
+        }
+
+        let conseq = self.parse_block_statement();
+        let alternative = None;
+        if self.peek_token_is(&Token::Else) {
+            self.advance_tokens();
+            match self.expect_peek(Token::Lbrace) {
+                Ok(()) => {}
+                Err(e) => {
+                    // parse error
+                }
+            }
+            self.
+
+        }
+        // if p.peekTokenIs(token.ELSE) {
+        //     p.nextToken()
+        //     if !p.expectPeek(token.LBRACE) {
+        //         return nil
+        //     }
+        //     expression.Alternative = p.parseBlockStatement()
+        // }
+
+        let if_exp = IfExpression::new(Token::If, condition, conseq, None);
+        IfStatement(Box::new(if_exp))
+    }
+
+    fn parse_block_statement(&mut self) -> BlockStatement {
+        let block_token = self.curr_token.clone();
+        self.advance_tokens();
+        let mut statements = Vec::new();
+        while !(self.curr_token == Token::Rbrace) && !(self.curr_token == Token::Eof) {
+            match self.parse_statement() {
+                Ok(stmt) => statements.push(stmt),
+                Err(err) => println!("{}", err), // TODO: error handling
+            }
+            self.advance_tokens();
+        }
+        BlockStatement::new(block_token, statements)
     }
 
     fn parse_prefix_expression(&mut self) -> Expression {
@@ -683,10 +757,85 @@ mod tests {
                     assert_eq!(Token::If, if_stmt.token);
                     test_infix(
                         &if_stmt.condition,
-                        Token::LT,
                         Token::Ident("x".to_string()),
+                        Token::LT,
                         Token::Ident("y".to_string()),
-                    )
+                    );
+                    assert_eq!(if_stmt.consequence.statements.len(), 1);
+                    if if_stmt.alternative.is_some() {
+                        panic!("expected if statement to be none");
+                    }
+                    let consq = if_stmt.consequence.statements.index(0);
+                    match consq {
+                        Statement::ExpressionStatement(c_stmt) => {
+                            test_expression_token_value(Token::Ident("x".to_string()), c_stmt);
+                        }
+                        _ => {
+                            panic!("consequence was unexpected statement type");
+                        }
+                    }
+                }
+                _ => {
+                    panic!("didnt receive an if statement!")
+                }
+            },
+            _ => {
+                panic!("didnt receive a statement expression!")
+            }
+        }
+
+        // TODO: clean up
+        let input = "if (x < y) { x } else { y }";
+        let l = Lexer::new(input);
+        let mut p = Parser::new(l);
+        let program = p.parse_program();
+        assert_eq!(program.statements.len(), 1);
+        assert_eq!(p.errors.len(), 0);
+        let if_expression = program.statements.index(0);
+        match if_expression {
+            Statement::ExpressionStatement(stmt) => match stmt {
+                Expression::IfStatement(if_stmt) => {
+                    assert_eq!(Token::If, if_stmt.token);
+                    test_infix(
+                        &if_stmt.condition,
+                        Token::Ident("x".to_string()),
+                        Token::LT,
+                        Token::Ident("y".to_string()),
+                    );
+
+                    // check alternative block statement
+                    match &if_stmt.alternative {
+                        Some(s) => {
+                            assert_eq!(s.statements.len(), 1);
+                            let alt = s.statements.index(0);
+                            match alt {
+                                Statement::ExpressionStatement(c_stmt) => {
+                                    test_expression_token_value(
+                                        Token::Ident("y".to_string()),
+                                        c_stmt,
+                                    );
+                                }
+                                _ => {
+                                    panic!("consequence was unexpected statement type");
+                                }
+                            }
+                        }
+                        None => {
+                            panic!("expected alternative to have some")
+                        }
+                    }
+
+                    // check consequence statement
+                    assert_eq!(if_stmt.consequence.statements.len(), 1);
+                    let consq = if_stmt.consequence.statements.index(0);
+                    match consq {
+                        Statement::ExpressionStatement(c_stmt) => {
+                            test_expression_token_value(Token::Ident("x".to_string()), c_stmt);
+                        }
+                        _ => {
+                            panic!("consequence was unexpected statement type");
+                        }
+                    }
                 }
                 _ => {
                     panic!("didnt receive an if statement!")
