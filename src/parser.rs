@@ -837,6 +837,50 @@ mod tests {
         }
     }
 
+    #[test]
+    fn parse_function_literal() {
+        let input = "fn(x, y) { x + y; }";
+        let l = Lexer::new(input);
+        let mut p = Parser::new(l);
+        let program = p.parse_program();
+        assert_eq!(program.statements.len(), 1);
+        assert_eq!(p.errors.len(), 0);
+        let function_statement = program.statements.index(0);
+        match function_statement {
+            Statement::ExpressionStatement(expression) => match expression {
+                Expression::FunctionLiteral(fn_literal) => {
+                    assert_eq!(fn_literal.parameters.len(), 2);
+                    // test literal expressions for paramters
+
+                    assert_eq!(fn_literal.body.statements.len(), 1);
+                    let body_stmt = fn_literal.body.statements.index(0);
+                    match body_stmt {
+                        Statement::ExpressionStatement(exp) => {
+                            test_infix(
+                                exp,
+                                Token::Ident("x".to_string()),
+                                Token::Plus,
+                                Token::Ident("y".to_string()),
+                            );
+                        }
+                        _ => {
+                            panic!("expected body statement to be expression");
+                        }
+                    }
+                }
+                _ => {
+                    panic!("didnt receive a function literal!")
+                }
+            },
+            _ => {
+                panic!("didnt receive a statement expression!")
+            }
+        }
+    }
+
+    // Helpers ------------------------------------------------------------------------------
+    // TODO: maybe move these to separate place
+
     fn test_infix(exp: &Expression, left: Token, op: Token, right: Token) {
         match exp {
             Expression::Infix(infix) => {

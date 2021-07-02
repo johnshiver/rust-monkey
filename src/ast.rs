@@ -28,6 +28,7 @@ pub enum Expression {
     Infix(Box<InfixExpression>),
     IfStatement(Box<IfExpression>),
     BlockStatement(Box<BlockStatement>),
+    FunctionLiteral(Box<FunctionLiteral>),
 }
 
 impl fmt::Display for Expression {
@@ -40,6 +41,7 @@ impl fmt::Display for Expression {
             Expression::Infix(ifx) => write!(f, "{}", ifx),
             Expression::IfStatement(if_stmt) => write!(f, "{}", if_stmt),
             Expression::BlockStatement(blk) => write!(f, "{}", blk),
+            Expression::FunctionLiteral(fl) => write!(f, "{}", fl),
         }
     }
 }
@@ -266,5 +268,37 @@ impl fmt::Display for BlockStatement {
             write!(f, "{}", s); // TODO: maybe writeln makes more sense
         }
         write!(f, "")
+    }
+}
+
+pub struct FunctionLiteral {
+    pub token: Token,
+    pub parameters: Vec<IdentExpression>,
+    pub body: BlockStatement,
+}
+
+impl FunctionLiteral {
+    pub fn new(token: Token, parameters: Vec<IdentExpression>, body: BlockStatement) -> Self {
+        FunctionLiteral {
+            token,
+            parameters,
+            body,
+        }
+    }
+}
+
+impl fmt::Display for FunctionLiteral {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let mut param_strs = Vec::new();
+        for p in &self.parameters {
+            let param_str = format!("{}", p);
+            param_strs.push(param_str);
+        }
+
+        write!(f, "{}", self.token);
+        write!(f, "(");
+        write!(f, "{}", param_strs.join(", "));
+        write!(f, ") ");
+        write!(f, "{}", self.body)
     }
 }
