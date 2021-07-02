@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
             }
             Token::Lparen => left = Some(self.parse_grouped_expression()),
             Token::Bang | Token::Minus => left = Some(self.parse_prefix_expression()),
-            Token::If => left = Some(self.parse_if_expression()),
+            Token::If => left = Some(self.parse_if_expression().unwrap()),
             _ => left = None,
         }
 
@@ -230,75 +230,65 @@ impl<'a> Parser<'a> {
         exp
     }
 
-    fn parse_if_expression(&mut self) -> Expression {
+    fn parse_if_expression(&mut self) -> Result<Expression, ParseError> {
         match self.expect_peek(Token::Lparen) {
             Ok(()) => {}
-            Err(e) => {
-                // parse error
-            }
+            Err(e) => return Err(e),
         }
         self.advance_tokens();
-
         let condition = self.parse_expression(LOWEST).unwrap();
-
         match self.expect_peek(Token::Rparen) {
             Ok(()) => {}
             Err(e) => {
-                // parse error
+                return Err(e);
             }
         }
-
-        match self.expect_peek(Token::Rparen) {
-            Ok(()) => {}
-            Err(e) => {
-                // parse error
-            }
-        }
-
         match self.expect_peek(Token::Lbrace) {
             Ok(()) => {}
             Err(e) => {
-                // parse error
+                return Err(e);
             }
         }
 
-        let conseq = self.parse_block_statement();
-        let alternative = None;
+        let consequence = match self.parse_block_statement() {
+            Ok(block_statement) => block_statement,
+            Err(e) => return Err(e),
+        };
+
+        let mut alternative = None;
         if self.peek_token_is(&Token::Else) {
             self.advance_tokens();
             match self.expect_peek(Token::Lbrace) {
                 Ok(()) => {}
-                Err(e) => {
-                    // parse error
-                }
-            }
-            self.
-
+                Err(e) => return Err(e),
+            };
+            alternative = match self.parse_block_statement() {
+                Ok(stmt) => Some(stmt),
+                Err(e) => return Err(e),
+            };
         }
-        // if p.peekTokenIs(token.ELSE) {
-        //     p.nextToken()
-        //     if !p.expectPeek(token.LBRACE) {
-        //         return nil
-        //     }
-        //     expression.Alternative = p.parseBlockStatement()
-        // }
 
-        let if_exp = IfExpression::new(Token::If, condition, conseq, None);
-        IfStatement(Box::new(if_exp))
+        let if_exp = IfExpression::new(Token::If, condition, consequence, alternative);
+        Ok(IfStatement(Box::new(if_exp)))
     }
 
-    fn parse_block_statement(&mut self) -> BlockStatement {
+    fn parse_block_statement(&mut self) -> Result<BlockStatement, ParseError> {
         let block_token = self.curr_token.clone();
         self.advance_tokens();
         let mut statements = Vec::new();
+        let mut errors = Vec::new();
         while !(self.curr_token == Token::Rbrace) && !(self.curr_token == Token::Eof) {
             match self.parse_statement() {
                 Ok(stmt) => statements.push(stmt),
-                Err(err) => println!("{}", err), // TODO: error handling
+                Err(err) => errors.push(err),
             }
             self.advance_tokens();
         }
-        BlockStatement::new(block_token, statements)
+        if !errors.is_empty() {
+            let err_string = errors.join(" | ");
+            return Err(err_string);
+        }
+        Ok(BlockStatement::new(block_token, statements))
     }
 
     fn parse_prefix_expression(&mut self) -> Expression {
