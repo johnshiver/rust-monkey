@@ -131,7 +131,8 @@ impl<'a> Parser<'a> {
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
         let mut left: Option<Expression> = None;
-        // check prefix
+
+        // evaluate prefix and assign to left
         match self.curr_token.clone() {
             Token::Ident(literal) => left = Some(self.parse_ident(literal)),
             Token::Int(literal) => left = Some(self.parse_int_literal(literal)),
@@ -144,6 +145,7 @@ impl<'a> Parser<'a> {
             _ => left = None,
         }
 
+        // if there was no prefix, return an error
         if left.is_none() {
             return Err(format!(
                 "while parsing expression: {:?} expression token not supported",
