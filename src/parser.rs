@@ -77,8 +77,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_peek(&mut self, tok: Token) -> Result<(), ParseError> {
-        match self.peek_token_is(&tok) {
+    fn expect_peek(&mut self, tok: &Token) -> Result<(), ParseError> {
+        match self.peek_token_is(tok) {
             true => {
                 self.advance_tokens();
                 Ok(())
@@ -225,25 +225,25 @@ impl<'a> Parser<'a> {
     fn parse_grouped_expression(&mut self) -> Expression {
         self.advance_tokens();
         let exp = self.parse_expression(LOWEST).unwrap();
-        self.expect_peek(Token::Rparen).unwrap();
+        self.expect_peek(&Token::Rparen).unwrap();
 
         exp
     }
 
     fn parse_if_expression(&mut self) -> Result<Expression, ParseError> {
-        match self.expect_peek(Token::Lparen) {
+        match self.expect_peek(&Token::Lparen) {
             Ok(()) => {}
             Err(e) => return Err(e),
         }
         self.advance_tokens();
         let condition = self.parse_expression(LOWEST).unwrap();
-        match self.expect_peek(Token::Rparen) {
+        match self.expect_peek(&Token::Rparen) {
             Ok(()) => {}
             Err(e) => {
                 return Err(e);
             }
         }
-        match self.expect_peek(Token::Lbrace) {
+        match self.expect_peek(&Token::Lbrace) {
             Ok(()) => {}
             Err(e) => {
                 return Err(e);
@@ -258,7 +258,7 @@ impl<'a> Parser<'a> {
         let mut alternative = None;
         if self.peek_token_is(&Token::Else) {
             self.advance_tokens();
-            match self.expect_peek(Token::Lbrace) {
+            match self.expect_peek(&Token::Lbrace) {
                 Ok(()) => {}
                 Err(e) => return Err(e),
             };
