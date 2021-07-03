@@ -409,6 +409,7 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::ast::Statement::ExpressionStatement;
     use crate::ast::{Expression, IdentExpression, Statement};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
@@ -921,13 +922,13 @@ mod tests {
             Statement::ExpressionStatement(expression) => match expression {
                 Expression::FunctionLiteralExpression(fn_literal) => {
                     assert_eq!(fn_literal.parameters.len(), 2);
-                    test_expression_token_value(
+                    test_ident(
                         Token::Ident("x".to_string()),
                         fn_literal.parameters.index(0),
                     );
-                    test_expression_token_value(
+                    test_ident(
                         Token::Ident("y".to_string()),
-                        fn_literal.parameters.index(0),
+                        fn_literal.parameters.index(1),
                     );
 
                     assert_eq!(fn_literal.body.statements.len(), 1);
@@ -969,7 +970,7 @@ mod tests {
                 expected_params: vec![],
             },
             Test {
-                input: "fn() {};",
+                input: "fn(x) {};",
                 expected_params: vec!["x"],
             },
             Test {
@@ -977,6 +978,31 @@ mod tests {
                 expected_params: vec!["x", "y", "z"],
             },
         ];
+        for t in tests {
+            let l = Lexer::new(t.input);
+            let mut parser = Parser::new(l);
+            let program = parser.parse_program();
+            assert_eq!(program.statements.len(), 1);
+            let statement = program.statements.index(0);
+            match statement {
+                ExpressionStatement(exp) => match exp {
+                    Expression::FunctionLiteralExpression(func_lit) => {
+                        let str_params: Vec<String> = func_lit
+                            .parameters
+                            .iter()
+                            .map(|x| x.token.to_string())
+                            .collect();
+                        assert_eq!(t.expected_params, str_params)
+                    }
+                    _ => {
+                        panic!("expected function literal expression")
+                    }
+                },
+                _ => {
+                    panic!("expected expression statemnet")
+                }
+            }
+        }
     }
 
     // Helpers ------------------------------------------------------------------------------
@@ -1012,6 +1038,9 @@ mod tests {
                 panic!("unsupported expression {}", expression)
             }
         }
+    }
+    fn test_ident(expected_token: Token, ident: &IdentExpression) {
+        assert_eq!(ident.token, expected_token)
     }
 }
 
