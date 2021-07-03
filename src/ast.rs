@@ -28,7 +28,7 @@ pub enum Expression {
     Infix(Box<InfixExpression>),
     IfStatement(Box<IfExpression>),
     BlockStatement(Box<BlockStatement>),
-    FunctionLiteral(Box<FunctionLiteral>),
+    FunctionLiteralExpression(Box<FunctionLiteral>),
 }
 
 impl fmt::Display for Expression {
@@ -41,7 +41,7 @@ impl fmt::Display for Expression {
             Expression::Infix(ifx) => write!(f, "{}", ifx),
             Expression::IfStatement(if_stmt) => write!(f, "{}", if_stmt),
             Expression::BlockStatement(blk) => write!(f, "{}", blk),
-            Expression::FunctionLiteral(fl) => write!(f, "{}", fl),
+            Expression::FunctionLiteralExpression(fl) => write!(f, "{}", fl),
         }
     }
 }
@@ -115,19 +115,23 @@ impl fmt::Display for ReturnStatement {
 }
 
 pub struct IdentExpression {
-    pub value: Token, // return token
+    pub token: Token, // return token
 }
 
 impl IdentExpression {
     pub fn new(value: String) -> Self {
         let tok = Token::Ident(value);
-        IdentExpression { value: tok }
+        IdentExpression { token: tok }
+    }
+
+    pub fn new_from_token(token: Token) -> Self {
+        IdentExpression { token }
     }
 }
 
 impl fmt::Display for IdentExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.value)
+        write!(f, "{}", self.token)
     }
 }
 
@@ -172,6 +176,7 @@ pub struct PrefixExpression {
 impl PrefixExpression {
     pub fn new(prefix: Token, exp: Expression) -> Self {
         // TODO: could validate token to ensure its prefix token
+        //       would require refactor for better error handling
         PrefixExpression {
             prefix_operator: prefix,
             right: exp,

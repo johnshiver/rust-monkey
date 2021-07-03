@@ -1,8 +1,8 @@
 use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
-    BlockStatement, BooleanLiteralExpression, Expression, IdentExpression, IfExpression,
-    InfixExpression, IntegerLiteralExpression, LetStatement, PrefixExpression, Program,
-    ReturnStatement, Statement,
+    BlockStatement, BooleanLiteralExpression, Expression, FunctionLiteral, IdentExpression,
+    IfExpression, InfixExpression, IntegerLiteralExpression, LetStatement, PrefixExpression,
+    Program, ReturnStatement, Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
@@ -70,6 +70,7 @@ impl<'a> Parser<'a> {
     }
 
     fn peek_token_is(&self, tok: &Token) -> bool {
+        // TODO: dont think this needs to be a reference
         match (&tok, &self.peek_token) {
             (Token::Ident(_), Token::Ident(_)) => true,
             (Token::Int(_), Token::Int(_)) => true,
@@ -130,20 +131,19 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
-        let mut left: Option<Expression> = None;
+        // let mut left: Option<Expression> = None;
 
         // evaluate prefix and assign to left
-        match self.curr_token.clone() {
-            Token::Ident(literal) => left = Some(self.parse_ident(literal)),
-            Token::Int(literal) => left = Some(self.parse_int_literal(literal)),
-            Token::True | Token::False => {
-                left = Some(self.parse_bool_literal(self.curr_token.clone()))
-            }
-            Token::Lparen => left = Some(self.parse_grouped_expression()),
-            Token::Bang | Token::Minus => left = Some(self.parse_prefix_expression()),
-            Token::If => left = Some(self.parse_if_expression().unwrap()),
-            _ => left = None,
-        }
+        let left = match self.curr_token.clone() {
+            Token::Ident(literal) => Some(self.parse_ident(literal)),
+            Token::Int(literal) => Some(self.parse_int_literal(literal)),
+            Token::True | Token::False => Some(self.parse_bool_literal(self.curr_token.clone())),
+            Token::Lparen => Some(self.parse_grouped_expression()),
+            Token::Bang | Token::Minus => Some(self.parse_prefix_expression()),
+            Token::If => Some(self.parse_if_expression().unwrap()),
+            Token::Function => Some(self.parse_function_literal().unwrap()),
+            _ => None,
+        };
 
         // if there was no prefix, return an error
         if left.is_none() {
@@ -293,6 +293,75 @@ impl<'a> Parser<'a> {
         Ok(BlockStatement::new(block_token, statements))
     }
 
+    fn parse_function_literal(&mut self) -> Result<Expression, ParseError> {
+        // should be a function token
+        let tok = self.curr_token.clone();
+        match self.expect_peek(&Token::Lparen) {
+            Ok(()) => {}
+            Err(e) => return Err(e),
+        };
+
+        let fn_params = match self.parse_function_parameters() {
+            Ok(params) => params,
+            Err(e) => return Err(e),
+        };
+
+        match self.expect_peek(&Token::Lbrace) {
+            Ok(()) => {}
+            Err(e) => return Err(e),
+        };
+
+        let body = match self.parse_block_statement() {
+            Ok(blk) => blk,
+            Err(e) => return Err(e),
+        };
+
+        let fn_lit = FunctionLiteral::new(tok, fn_params, body);
+        Ok(Expression::FunctionLiteralExpression(Box::new(fn_lit)))
+    }
+
+    fn parse_function_parameters(&mut self) -> Result<Vec<IdentExpression>, ParseError> {
+        let mut params = Vec::new();
+
+        if self.peek_token_is(&Token::Rparen) {
+            self.advance_tokens();
+            return Ok(params);
+        }
+        self.advance_tokens();
+
+        let param = match self.parse_ident_into_ident_expression() {
+            Ok(ident_exp) => ident_exp,
+            Err(e) => return Err(e),
+        };
+        params.push(param);
+
+        while self.peek_token_is(&Token::Comma) {
+            self.advance_tokens();
+            self.advance_tokens();
+            let param = match self.parse_ident_into_ident_expression() {
+                Ok(ident_exp) => ident_exp,
+                Err(e) => return Err(e),
+            };
+            params.push(param);
+        }
+
+        match self.expect_peek(&Token::Rparen) {
+            Ok(()) => {}
+            Err(e) => return Err(e),
+        }
+        return Ok(params);
+    }
+
+    fn parse_ident_into_ident_expression(&mut self) -> Result<IdentExpression, ParseError> {
+        if let Token::Ident(name) = &self.curr_token {
+            return Ok(IdentExpression::new(name.to_string()));
+        }
+        Err(format!(
+            "expected current token to be an identifier, received {}",
+            &self.curr_token
+        ))
+    }
+
     fn parse_prefix_expression(&mut self) -> Expression {
         let tok = self.curr_token.clone();
         self.advance_tokens();
@@ -340,7 +409,7 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Expression, Statement};
+    use crate::ast::{Expression, IdentExpression, Statement};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::token::Token;
@@ -421,7 +490,7 @@ mod tests {
         match statements.next().unwrap() {
             Statement::ExpressionStatement(stmt) => match stmt {
                 Expression::Ident(ident) => {
-                    assert_eq!(Token::Ident("foobar".to_string()), ident.value);
+                    assert_eq!(Token::Ident("foobar".to_string()), ident.token);
                 }
                 _ => {
                     panic!("didnt receive a ident expression!")
@@ -850,16 +919,23 @@ mod tests {
         let function_statement = program.statements.index(0);
         match function_statement {
             Statement::ExpressionStatement(expression) => match expression {
-                Expression::FunctionLiteral(fn_literal) => {
+                Expression::FunctionLiteralExpression(fn_literal) => {
                     assert_eq!(fn_literal.parameters.len(), 2);
-                    // test literal expressions for paramters
+                    test_expression_token_value(
+                        Token::Ident("x".to_string()),
+                        fn_literal.parameters.index(0),
+                    );
+                    test_expression_token_value(
+                        Token::Ident("y".to_string()),
+                        fn_literal.parameters.index(0),
+                    );
 
                     assert_eq!(fn_literal.body.statements.len(), 1);
                     let body_stmt = fn_literal.body.statements.index(0);
                     match body_stmt {
                         Statement::ExpressionStatement(exp) => {
                             test_infix(
-                                exp,
+                                &exp,
                                 Token::Ident("x".to_string()),
                                 Token::Plus,
                                 Token::Ident("y".to_string()),
@@ -878,6 +954,29 @@ mod tests {
                 panic!("didnt receive a statement expression!")
             }
         }
+    }
+
+    #[test]
+    fn test_function_parameters() {
+        struct Test<'a> {
+            input: &'a str,
+            expected_params: Vec<&'a str>, // TODO this is probably broken
+        }
+
+        let tests = vec![
+            Test {
+                input: "fn() {};",
+                expected_params: vec![],
+            },
+            Test {
+                input: "fn() {};",
+                expected_params: vec!["x"],
+            },
+            Test {
+                input: "fn(x, y, z) {};",
+                expected_params: vec!["x", "y", "z"],
+            },
+        ];
     }
 
     // Helpers ------------------------------------------------------------------------------
@@ -907,7 +1006,7 @@ mod tests {
                 assert_eq!(expected_token, bool_lit.value)
             }
             Expression::Ident(id) => {
-                assert_eq!(expected_token, id.value)
+                assert_eq!(expected_token, id.token)
             }
             _ => {
                 panic!("unsupported expression {}", expression)
