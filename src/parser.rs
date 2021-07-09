@@ -1,8 +1,8 @@
 use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
-    BlockStatement, BooleanLiteralExpression, Expression, FunctionLiteral, IdentExpression,
-    IfExpression, InfixExpression, IntegerLiteralExpression, LetStatement, PrefixExpression,
-    Program, ReturnStatement, Statement,
+    BlockStatement, BooleanLiteralExpression, CallExpression, Expression, FunctionLiteral,
+    IdentExpression, IfExpression, InfixExpression, IntegerLiteralExpression, LetStatement,
+    PrefixExpression, Program, ReturnStatement, Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
@@ -39,6 +39,7 @@ lazy_static! {
         (Token::Minus, SUM),
         (Token::Slash, PRODUCT),
         (Token::Asterisk, PRODUCT),
+        (Token::Lparen, CALL),
     ]
     .iter()
     .cloned()
@@ -156,7 +157,8 @@ impl<'a> Parser<'a> {
         let mut l = left.unwrap();
         while !(self.peek_token == Token::Semicolon) && precedence < self.peek_precedence() {
             match &self.peek_token {
-                Token::Plus
+                Token::Lparen
+                | Token::Plus
                 | Token::Minus
                 | Token::Slash
                 | Token::Asterisk
@@ -378,6 +380,46 @@ impl<'a> Parser<'a> {
         let right = self.parse_expression(p).unwrap(); // TODO: better error handling
         let infix = InfixExpression::new(operator, exp, right);
         Expression::Infix(Box::new(infix))
+    }
+
+    fn parse_call_expression(&mut self, function: Expression) -> Result<Expression, ParseError> {
+        let args = match self.parse_call_arguments() {
+            Ok(a) => a,
+            Err(e) => return Err(e),
+        };
+        let call_exp = CallExpression::new(self.curr_token.clone(), function, args);
+        Ok(Expression::Call(Box::new(call_exp)))
+    }
+
+    fn parse_call_arguments(&mut self) -> Result<Vec<Expression>, ParseError> {
+        let mut args = Vec::new();
+
+        // no arguments
+        if self.peek_token_is(&Token::Rparen) {
+            self.advance_tokens();
+            return Ok(args);
+        }
+
+        self.advance_tokens();
+        match self.parse_expression(LOWEST) {
+            Ok(exp) => args.push(exp),
+            Err(err) => return Err(err),
+        };
+
+        while self.peek_token_is(&Token::Comma) {
+            self.advance_tokens();
+            self.advance_tokens();
+            match self.parse_expression(LOWEST) {
+                Ok(exp) => args.push(exp),
+                Err(err) => return Err(err),
+            };
+        }
+        match self.expect_peek(&Token::Rparen) {
+            Ok(()) => {}
+            Err(e) => return Err(e),
+        };
+
+        Ok(args)
     }
 
     fn expect_ident(&mut self) -> Result<String, ParseError> {
