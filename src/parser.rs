@@ -157,8 +157,7 @@ impl<'a> Parser<'a> {
         let mut l = left.unwrap();
         while !(self.peek_token == Token::Semicolon) && precedence < self.peek_precedence() {
             match &self.peek_token {
-                Token::Lparen
-                | Token::Plus
+                Token::Plus
                 | Token::Minus
                 | Token::Slash
                 | Token::Asterisk
@@ -168,6 +167,10 @@ impl<'a> Parser<'a> {
                 | Token::LT => {
                     self.advance_tokens();
                     l = self.parse_infix_expression(l);
+                }
+                Token::Lparen => {
+                    self.advance_tokens();
+                    l = self.parse_call_expression(l).unwrap();
                 }
                 _ => break,
             }
@@ -383,11 +386,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_call_expression(&mut self, function: Expression) -> Result<Expression, ParseError> {
+        let tok = self.curr_token.clone();
         let args = match self.parse_call_arguments() {
             Ok(a) => a,
             Err(e) => return Err(e),
         };
-        let call_exp = CallExpression::new(self.curr_token.clone(), function, args);
+        let call_exp = CallExpression::new(tok, function, args);
         Ok(Expression::Call(Box::new(call_exp)))
     }
 
@@ -1059,7 +1063,7 @@ mod tests {
             ExpressionStatement(exp) => match exp {
                 Expression::Call(call) => match &call.function {
                     Expression::Ident(ident) => {
-                        test_ident(Token::Function, &ident);
+                        test_ident(Token::Ident("add".to_string()), &ident);
                     }
                     _ => {
                         panic!("expected an ident expression for func")
@@ -1086,7 +1090,7 @@ mod tests {
                         Token::Int(3),
                     );
                     test_infix(
-                        call.arguments.index(1),
+                        call.arguments.index(2),
                         Token::Int(4),
                         Token::Plus,
                         Token::Int(5),
