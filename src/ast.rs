@@ -29,6 +29,7 @@ pub enum Expression {
     IfStatement(Box<IfExpression>),
     BlockStatement(Box<BlockStatement>),
     FunctionLiteralExpression(Box<FunctionLiteral>),
+    Call(Box<CallExpression>),
 }
 
 impl fmt::Display for Expression {
@@ -42,6 +43,7 @@ impl fmt::Display for Expression {
             Expression::IfStatement(if_stmt) => write!(f, "{}", if_stmt),
             Expression::BlockStatement(blk) => write!(f, "{}", blk),
             Expression::FunctionLiteralExpression(fl) => write!(f, "{}", fl),
+            Expression::Call((call)) => write!(f, "{}", call)<
         }
     }
 }
@@ -305,5 +307,36 @@ impl fmt::Display for FunctionLiteral {
         write!(f, "{}", param_strs.join(", "));
         write!(f, ") ");
         write!(f, "{}", self.body)
+    }
+}
+
+pub struct CallExpression {
+    pub token: Token,
+    pub function: Expression, //Identifier or function literal
+    pub arguments: Vec<Expression>,
+}
+
+impl CallExpression {
+    pub fn new(token: Token, function: Expression, arguments: Vec<Expression>) -> Self {
+        CallExpression {
+            token,
+            function,
+            arguments,
+        }
+    }
+}
+
+impl fmt::Display for CallExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let mut arg_strs= Vec::new();
+        for a in &self.arguments{
+            let arg_str= format!("{}", a);
+            arg_strs.push(arg_str);
+        }
+
+        write!(f, "{}", self.function);
+        write!(f, "(");
+        write!(f, "{}", arg_strs.join(", "));
+        write!(f, ") ")
     }
 }

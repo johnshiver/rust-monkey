@@ -1005,6 +1005,60 @@ mod tests {
         }
     }
 
+    fn test_call_expression_parsing() {
+        let input = "add(1, 2 * 3, 4 + 5);";
+        let l = Lexer::new(input);
+        let mut parser = Parser::new(l);
+        let program = parser.parse_program();
+        assert_eq!(program.statements.len(), 1);
+        let statement = program.statements.index(0);
+        match statement {
+            ExpressionStatement(exp) => match exp {
+                Expression::Call(call) => match call.function {
+                    Expression::Ident(ident) => {
+                        test_ident(Token::Function, &ident);
+                    }
+                    _ => {
+                        panic!("expected an ident expression for func")
+                    }
+                },
+                _ => {
+                    panic!("expected ident expression")
+                }
+            },
+            _ => {
+                panic!("expected expression statement")
+            }
+        }
+
+        match statement {
+            ExpressionStatement(exp) => match exp {
+                Expression::Call(call) => {
+                    assert_eq!(call.arguments.len(), 3);
+                    test_expression_token_value(Token::Int(1), call.arguments.index(0));
+                    test_infix(
+                        call.arguments.index(1),
+                        Token::Int(2),
+                        Token::Asterisk,
+                        Token::Int(3),
+                    );
+                    test_infix(
+                        call.arguments.index(1),
+                        Token::Int(4),
+                        Token::Plus,
+                        Token::Int(5),
+                    )
+                }
+                _ => {
+                    panic!("expected call expression")
+                }
+            },
+            _ => {
+                panic!("expected expression statement")
+            }
+        }
+    }
+
     // Helpers ------------------------------------------------------------------------------
     // TODO: maybe move these to separate place
 
