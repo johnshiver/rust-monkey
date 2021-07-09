@@ -43,7 +43,7 @@ impl fmt::Display for Expression {
             Expression::IfStatement(if_stmt) => write!(f, "{}", if_stmt),
             Expression::BlockStatement(blk) => write!(f, "{}", blk),
             Expression::FunctionLiteralExpression(fl) => write!(f, "{}", fl),
-            Expression::Call((call)) => write!(f, "{}", call)<
+            Expression::Call(call) => write!(f, "{}", call),
         }
     }
 }
@@ -328,9 +328,9 @@ impl CallExpression {
 
 impl fmt::Display for CallExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        let mut arg_strs= Vec::new();
-        for a in &self.arguments{
-            let arg_str= format!("{}", a);
+        let mut arg_strs = Vec::new();
+        for a in &self.arguments {
+            let arg_str = format!("{}", a);
             arg_strs.push(arg_str);
         }
 

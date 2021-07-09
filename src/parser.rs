@@ -1005,6 +1005,7 @@ mod tests {
         }
     }
 
+    #[test]
     fn test_call_expression_parsing() {
         let input = "add(1, 2 * 3, 4 + 5);";
         let l = Lexer::new(input);
@@ -1014,7 +1015,7 @@ mod tests {
         let statement = program.statements.index(0);
         match statement {
             ExpressionStatement(exp) => match exp {
-                Expression::Call(call) => match call.function {
+                Expression::Call(call) => match &call.function {
                     Expression::Ident(ident) => {
                         test_ident(Token::Function, &ident);
                     }
