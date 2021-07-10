@@ -456,7 +456,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use crate::ast::Statement::ExpressionStatement;
-    use crate::ast::{Expression, IdentExpression, Statement};
+    use crate::ast::{Expression, IdentExpression, IntegerLiteralExpression, Statement};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::token::Token;
@@ -465,27 +465,48 @@ mod tests {
 
     #[test]
     fn let_statements() {
-        let input = "
-        let x = 5;
-        let y = 10;
-        let foobar = 838383;
-        ";
-        let l = Lexer::new(input);
-        let mut p = Parser::new(l);
-        let program = p.parse_program();
-        assert_eq!(program.statements.len(), 3);
-        let expected_identifiers = vec![
-            Token::Ident("x".to_string()),
-            Token::Ident("y".to_string()),
-            Token::Ident("foobar".to_string()),
+        struct Test<'a> {
+            input: &'a str,
+            expected_identifier: Token,
+            expected_value: Token,
+        }
+
+        let tests = vec![
+            Test {
+                input: "let x = 5;",
+                expected_identifier: Token::Ident("x".to_string()),
+                expected_value: Token::Int(5),
+            },
+            // Test {
+            //     input: "let y = true;",
+            //     expected_identifier: Token::Ident("x".to_string()),
+            //     expected_value: Token::Int(5),
+            // },
+            // Test {
+            //     input: "let foobar = y;",
+            //     expected_identifier: Token::Ident("x".to_string()),
+            //     expected_value: Token::Int(5),
+            // },
         ];
-        let mut statements = program.statements.iter();
-        for id in expected_identifiers {
-            match statements.next().unwrap() {
-                Statement::Let(ref l) => {
-                    assert_eq!(l.name, id)
+
+        for test in tests {
+            let l = Lexer::new(test.input);
+            let mut p = Parser::new(l);
+            let program = p.parse_program();
+            assert_eq!(program.statements.len(), 1);
+            let let_stmt = program.statements.index(0);
+            match let_stmt {
+                Statement::Let(l) => {
+                    assert_eq!(test.expected_identifier, l.name);
+                    if l.value.is_none() {
+                        panic!("expected let statement value not to be none!")
+                    }
+                    let l_val = l.value.as_ref().unwrap();
+                    test_expression_token_value(test.expected_value, l_val);
                 }
-                _ => panic!("expected let statement"),
+                _ => {
+                    panic!("expected a let statement");
+                }
             }
         }
     }
@@ -1144,5 +1165,3 @@ mod tests {
         assert_eq!(ident.token, expected_token)
     }
 }
-
-// TODO: create some test helpers
