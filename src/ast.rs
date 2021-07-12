@@ -94,11 +94,11 @@ impl fmt::Display for LetStatement {
 
 pub struct ReturnStatement {
     pub name: Token, // return token
-    pub value: Option<Expression>,
+    pub value: Expression,
 }
 
 impl ReturnStatement {
-    pub fn new(value: Option<Expression>) -> Self {
+    pub fn new(value: Expression) -> Self {
         ReturnStatement {
             name: Token::Return,
             value,
@@ -109,10 +109,7 @@ impl ReturnStatement {
 impl fmt::Display for ReturnStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "return ");
-        match self.value.as_ref() {
-            Some(e) => write!(f, " {};", e),
-            None => write!(f, ";"),
-        }
+        write!(f, " {};", self.value)
     }
 }
 

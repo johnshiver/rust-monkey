@@ -112,10 +112,7 @@ impl<'a> Parser<'a> {
                 Ok(stmt) => Ok(stmt),
                 Err(e) => Err(e),
             },
-            Token::Return => {
-                let stmt = self.parse_return();
-                Ok(stmt)
-            }
+            Token::Return => self.parse_return(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -132,8 +129,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
-        // let mut left: Option<Expression> = None;
-
         // evaluate prefix and assign to left
         let left = match self.curr_token.clone() {
             Token::Ident(literal) => Some(self.parse_ident(literal)),
@@ -204,16 +199,14 @@ impl<'a> Parser<'a> {
         Ok(Let(Box::new(let_stmt)))
     }
 
-    fn parse_return(&mut self) -> Statement {
-        // current token is return
-        let stmt = ReturnStatement::new(None);
-
+    fn parse_return(&mut self) -> Result<Statement, ParseError> {
         self.advance_tokens();
-        // eventually will have to parse the Expression
-        while self.curr_token != Token::Semicolon {
-            self.advance_tokens();
-        }
-        Return(Box::new(stmt))
+        let stmt = match self.parse_expression(LOWEST) {
+            Ok(exp) => exp,
+            Err(e) => return Err(e),
+        };
+        let return_stmt = ReturnStatement::new(stmt);
+        Ok(Return(Box::new(return_stmt)))
     }
 
     fn parse_ident(&mut self, literal: String) -> Expression {
@@ -479,16 +472,16 @@ mod tests {
                 expected_identifier: Token::Ident("x".to_string()),
                 expected_value: Token::Int(5),
             },
-            // Test {
-            //     input: "let y = true;",
-            //     expected_identifier: Token::Ident("x".to_string()),
-            //     expected_value: Token::Int(5),
-            // },
-            // Test {
-            //     input: "let foobar = y;",
-            //     expected_identifier: Token::Ident("x".to_string()),
-            //     expected_value: Token::Int(5),
-            // },
+            Test {
+                input: "let y = true;",
+                expected_identifier: Token::Ident("y".to_string()),
+                expected_value: Token::True,
+            },
+            Test {
+                input: "let foobar = y;",
+                expected_identifier: Token::Ident("foobar".to_string()),
+                expected_value: Token::Ident("y".to_string()),
+            },
         ];
 
         for test in tests {
