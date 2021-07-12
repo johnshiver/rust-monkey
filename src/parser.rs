@@ -9,7 +9,7 @@ use crate::token::Token;
 use crate::token::Token::{Assign, Eof, If, Rparen};
 use std::collections::HashMap;
 
-use crate::ast::Expression::IfStatement;
+use crate::ast::Expression::{Ident, IfStatement};
 use lazy_static::lazy_static;
 
 // TODO: might be nice to add metadata to parse error, like line number
@@ -108,10 +108,10 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match self.curr_token {
-            Token::Let => {
-                let stmt = self.parse_let();
-                Ok(stmt)
-            }
+            Token::Let => match self.parse_let() {
+                Ok(stmt) => Ok(stmt),
+                Err(e) => Err(e),
+            },
             Token::Return => {
                 let stmt = self.parse_return();
                 Ok(stmt)
@@ -178,28 +178,30 @@ impl<'a> Parser<'a> {
         Ok(l)
     }
 
-    fn parse_let(&mut self) -> Statement {
-        // next token should be an identifier
-        let mut name = "".to_string();
-        match self.expect_ident() {
-            Ok(n) => name = n,
-            Err(e) => self.errors.push(e),
+    fn parse_let(&mut self) -> Result<Statement, ParseError> {
+        let ident_name = match self.expect_ident() {
+            Ok(name) => name,
+            Err(e) => return Err(e),
         };
 
-        let stmt = LetStatement::new(name, None);
+        match self.expect_peek(&Token::Assign) {
+            Ok(()) => {}
+            Err(e) => return Err(e),
+        };
 
-        if self.peek_token != Assign {
-            self.errors.push(format!(
-                "expected assign token, received {:?}",
-                self.peek_token
-            ));
-        }
+        self.advance_tokens();
 
-        // eventually will have to parse the Expression
-        while self.curr_token != Token::Semicolon {
+        let let_val = match self.parse_expression(LOWEST) {
+            Ok(expr) => expr,
+            Err(e) => return Err(e),
+        };
+
+        if self.peek_token_is(&Token::Semicolon) {
             self.advance_tokens();
         }
-        Let(Box::new(stmt))
+
+        let let_stmt = LetStatement::new(ident_name, Some(let_val));
+        Ok(Let(Box::new(let_stmt)))
     }
 
     fn parse_return(&mut self) -> Statement {
@@ -496,12 +498,12 @@ mod tests {
             assert_eq!(program.statements.len(), 1);
             let let_stmt = program.statements.index(0);
             match let_stmt {
-                Statement::Let(l) => {
-                    assert_eq!(test.expected_identifier, l.name);
-                    if l.value.is_none() {
+                Statement::Let(l_s) => {
+                    assert_eq!(test.expected_identifier, l_s.name);
+                    if l_s.value.is_none() {
                         panic!("expected let statement value not to be none!")
                     }
-                    let l_val = l.value.as_ref().unwrap();
+                    let l_val = l_s.value.as_ref().unwrap();
                     test_expression_token_value(test.expected_value, l_val);
                 }
                 _ => {
