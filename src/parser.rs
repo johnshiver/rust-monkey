@@ -46,11 +46,11 @@ lazy_static! {
     .collect();
 }
 
-struct Parser<'a> {
+pub struct Parser<'a> {
     lexer: Lexer<'a>,
     curr_token: Token,
     peek_token: Token,
-    errors: Vec<ParseError>,
+    pub errors: Vec<ParseError>, // TODO: might make sense to move this to program
 }
 
 impl<'a> Parser<'a> {
