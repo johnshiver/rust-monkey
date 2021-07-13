@@ -4,6 +4,13 @@ use crate::token::Token;
 use std::fmt;
 use std::fmt::Formatter;
 
+#[derive(Debug)]
+pub enum Node {
+    Program(Box<Program>),
+    Statement(Box<Statement>), // do we need both?
+    Expression(Box<ExpressionStatement>),
+}
+
 pub enum Statement {
     Let(Box<LetStatement>),
     Return(Box<ReturnStatement>),
@@ -28,7 +35,7 @@ pub enum Expression {
     Infix(Box<InfixExpression>),
     IfStatement(Box<IfExpression>),
     BlockStatement(Box<BlockStatement>),
-    FunctionLiteralExpression(Box<FunctionLiteral>),
+    FunctionLiteral(Box<FunctionLiteralExpression>),
     Call(Box<CallExpression>),
 }
 
@@ -42,7 +49,7 @@ impl fmt::Display for Expression {
             Expression::Infix(ifx) => write!(f, "{}", ifx),
             Expression::IfStatement(if_stmt) => write!(f, "{}", if_stmt),
             Expression::BlockStatement(blk) => write!(f, "{}", blk),
-            Expression::FunctionLiteralExpression(fl) => write!(f, "{}", fl),
+            Expression::FunctionLiteral(fl) => write!(f, "{}", fl),
             Expression::Call(call) => write!(f, "{}", call),
         }
     }
@@ -275,15 +282,15 @@ impl fmt::Display for BlockStatement {
     }
 }
 
-pub struct FunctionLiteral {
+pub struct FunctionLiteralExpression {
     pub token: Token,
     pub parameters: Vec<IdentExpression>,
     pub body: BlockStatement,
 }
 
-impl FunctionLiteral {
+impl FunctionLiteralExpression {
     pub fn new(token: Token, parameters: Vec<IdentExpression>, body: BlockStatement) -> Self {
-        FunctionLiteral {
+        FunctionLiteralExpression {
             token,
             parameters,
             body,
@@ -291,7 +298,7 @@ impl FunctionLiteral {
     }
 }
 
-impl fmt::Display for FunctionLiteral {
+impl fmt::Display for FunctionLiteralExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let mut param_strs = Vec::new();
         for p in &self.parameters {

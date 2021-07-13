@@ -1,8 +1,8 @@
 use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
-    BlockStatement, BooleanLiteralExpression, CallExpression, Expression, FunctionLiteral,
-    IdentExpression, IfExpression, InfixExpression, IntegerLiteralExpression, LetStatement,
-    PrefixExpression, Program, ReturnStatement, Statement,
+    BlockStatement, BooleanLiteralExpression, CallExpression, Expression,
+    FunctionLiteralExpression, IdentExpression, IfExpression, InfixExpression,
+    IntegerLiteralExpression, LetStatement, PrefixExpression, Program, ReturnStatement, Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
@@ -316,8 +316,8 @@ impl<'a> Parser<'a> {
             Err(e) => return Err(e),
         };
 
-        let fn_lit = FunctionLiteral::new(tok, fn_params, body);
-        Ok(Expression::FunctionLiteralExpression(Box::new(fn_lit)))
+        let fn_lit = FunctionLiteralExpression::new(tok, fn_params, body);
+        Ok(Expression::FunctionLiteral(Box::new(fn_lit)))
     }
 
     fn parse_function_parameters(&mut self) -> Result<Vec<IdentExpression>, ParseError> {
@@ -982,7 +982,7 @@ mod tests {
         let function_statement = program.statements.index(0);
         match function_statement {
             Statement::ExpressionStatement(expression) => match expression {
-                Expression::FunctionLiteralExpression(fn_literal) => {
+                Expression::FunctionLiteral(fn_literal) => {
                     assert_eq!(fn_literal.parameters.len(), 2);
                     test_ident(
                         Token::Ident("x".to_string()),
@@ -1048,7 +1048,7 @@ mod tests {
             let statement = program.statements.index(0);
             match statement {
                 ExpressionStatement(exp) => match exp {
-                    Expression::FunctionLiteralExpression(func_lit) => {
+                    Expression::FunctionLiteral(func_lit) => {
                         let str_params: Vec<String> = func_lit
                             .parameters
                             .iter()
