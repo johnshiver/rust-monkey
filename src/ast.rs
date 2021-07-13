@@ -8,7 +8,7 @@ use std::fmt::Formatter;
 pub enum Node {
     Program(Box<Program>),
     Statement(Box<Statement>), // do we need both?
-    Expression(Box<ExpressionStatement>),
+    Expression(Box<Expression>),
 }
 
 pub enum Statement {

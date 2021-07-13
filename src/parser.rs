@@ -2,7 +2,8 @@ use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
     BlockStatement, BooleanLiteralExpression, CallExpression, Expression,
     FunctionLiteralExpression, IdentExpression, IfExpression, InfixExpression,
-    IntegerLiteralExpression, LetStatement, PrefixExpression, Program, ReturnStatement, Statement,
+    IntegerLiteralExpression, LetStatement, Node, PrefixExpression, Program, ReturnStatement,
+    Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
@@ -434,7 +435,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_program(&mut self) -> Program {
+    // TODO: return errors if you have them
+    pub fn parse_program(&mut self) -> Node {
         let mut p = Program::new();
         while self.curr_token != Eof {
             let stmt = self.parse_statement();
@@ -444,7 +446,7 @@ impl<'a> Parser<'a> {
             }
             self.advance_tokens();
         }
-        p
+        Node::Program(Box::new(p))
     }
 }
 
