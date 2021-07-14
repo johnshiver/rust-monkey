@@ -5,7 +5,7 @@ const BOOLEAN_OBJ: ObjectType = "BOOLEAN";
 const NULL_OBJ: ObjectType = "NULL";
 
 pub enum Object {
-    Integer(int64),
+    Integer(i64),
     Boolean(bool),
     Null,
 }

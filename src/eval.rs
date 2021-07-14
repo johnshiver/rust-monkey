@@ -34,7 +34,7 @@ mod tests {
         let l = Lexer::new(input);
         let mut p = Parser::new(l);
         let program = p.parse_program();
-        Eval(Node::Program(Box::new(program)))
+        Eval(program)
     }
 
     #[test]

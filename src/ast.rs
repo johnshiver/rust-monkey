@@ -4,7 +4,6 @@ use crate::token::Token;
 use std::fmt;
 use std::fmt::Formatter;
 
-#[derive(Debug)]
 pub enum Node {
     Program(Box<Program>),
     Statement(Box<Statement>), // do we need both?
