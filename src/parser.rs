@@ -1,9 +1,7 @@
 use crate::ast::Statement::{ExpressionStatement, Let, Return};
 use crate::ast::{
-    BlockStatement, BooleanLiteralExpression, CallExpression, Expression,
-    FunctionLiteralExpression, IdentExpression, IfExpression, InfixExpression,
-    IntegerLiteralExpression, LetStatement, Node, PrefixExpression, Program, ReturnStatement,
-    Statement,
+    BlockStatement, CallExpression, Expression, FunctionExpression, IdentExpression, IfExpression,
+    InfixExpression, LetStatement, Node, PrefixExpression, Program, ReturnStatement, Statement,
 };
 use crate::lexer::Lexer;
 use crate::token::Token;
@@ -134,7 +132,8 @@ impl<'a> Parser<'a> {
         let left = match self.curr_token.clone() {
             Token::Ident(literal) => Some(self.parse_ident(literal)),
             Token::Int(literal) => Some(self.parse_int_literal(literal)),
-            Token::True | Token::False => Some(self.parse_bool_literal(self.curr_token.clone())),
+            Token::True => Some(self.parse_bool_literal(true)),
+            Token::False => Some(self.parse_bool_literal(false)),
             Token::Lparen => Some(self.parse_grouped_expression()),
             Token::Bang | Token::Minus => Some(self.parse_prefix_expression()),
             Token::If => Some(self.parse_if_expression().unwrap()),
@@ -216,13 +215,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_int_literal(&mut self, literal: i64) -> Expression {
-        let ie = IntegerLiteralExpression::new(literal);
-        Expression::IntegerLiteral(Box::new(ie))
+        Expression::Integer(literal)
     }
 
-    fn parse_bool_literal(&mut self, val: Token) -> Expression {
-        let ie = BooleanLiteralExpression::new(val);
-        Expression::BoolLiteral(Box::new(ie))
+    fn parse_bool_literal(&mut self, val: bool) -> Expression {
+        Expression::Bool(val)
     }
 
     fn parse_grouped_expression(&mut self) -> Expression {
@@ -317,8 +314,8 @@ impl<'a> Parser<'a> {
             Err(e) => return Err(e),
         };
 
-        let fn_lit = FunctionLiteralExpression::new(tok, fn_params, body);
-        Ok(Expression::FunctionLiteral(Box::new(fn_lit)))
+        let fn_lit = FunctionExpression::new(tok, fn_params, body);
+        Ok(Expression::Function(Box::new(fn_lit)))
     }
 
     fn parse_function_parameters(&mut self) -> Result<Vec<IdentExpression>, ParseError> {
@@ -453,9 +450,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use crate::ast::Statement::ExpressionStatement;
-    use crate::ast::{
-        Expression, IdentExpression, IntegerLiteralExpression, Node, Program, Statement,
-    };
+    use crate::ast::{Expression, IdentExpression, Node, Program, Statement};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::token::Token;
@@ -570,8 +565,8 @@ mod tests {
         let mut statements = program.statements.iter();
         match statements.next().unwrap() {
             Statement::ExpressionStatement(stmt) => match stmt {
-                Expression::IntegerLiteral(ident) => {
-                    assert_eq!(Token::Int(5), ident.value);
+                Expression::Integer(int) => {
+                    assert_eq!(5, *int);
                 }
                 _ => {
                     panic!("didnt receive a integer literal expression!")
@@ -592,8 +587,8 @@ mod tests {
         let mut statements = program.statements.iter();
         match statements.next().unwrap() {
             Statement::ExpressionStatement(stmt) => match stmt {
-                Expression::BoolLiteral(ident) => {
-                    assert_eq!(Token::True, ident.value);
+                Expression::Bool(bool_lit) => {
+                    assert_eq!(true, *bool_lit);
                 }
                 _ => {
                     panic!("didnt receive a bool literal expression!")
@@ -961,19 +956,13 @@ mod tests {
         let function_statement = program.statements.index(0);
         match function_statement {
             Statement::ExpressionStatement(expression) => match expression {
-                Expression::FunctionLiteral(fn_literal) => {
-                    assert_eq!(fn_literal.parameters.len(), 2);
-                    test_ident(
-                        Token::Ident("x".to_string()),
-                        fn_literal.parameters.index(0),
-                    );
-                    test_ident(
-                        Token::Ident("y".to_string()),
-                        fn_literal.parameters.index(1),
-                    );
+                Expression::Function(fn_lit) => {
+                    assert_eq!(fn_lit.parameters.len(), 2);
+                    test_ident(Token::Ident("x".to_string()), fn_lit.parameters.index(0));
+                    test_ident(Token::Ident("y".to_string()), fn_lit.parameters.index(1));
 
-                    assert_eq!(fn_literal.body.statements.len(), 1);
-                    let body_stmt = fn_literal.body.statements.index(0);
+                    assert_eq!(fn_lit.body.statements.len(), 1);
+                    let body_stmt = fn_lit.body.statements.index(0);
                     match body_stmt {
                         Statement::ExpressionStatement(exp) => {
                             test_infix(
@@ -1025,7 +1014,7 @@ mod tests {
             let statement = program.statements.index(0);
             match statement {
                 ExpressionStatement(exp) => match exp {
-                    Expression::FunctionLiteral(func_lit) => {
+                    Expression::Function(func_lit) => {
                         let str_params: Vec<String> = func_lit
                             .parameters
                             .iter()
@@ -1117,12 +1106,12 @@ mod tests {
 
     fn test_expression_token_value(expected_token: Token, expression: &Expression) {
         match expression {
-            Expression::IntegerLiteral(int_lit) => {
-                assert_eq!(expected_token, int_lit.value);
-            }
-            Expression::BoolLiteral(bool_lit) => {
-                assert_eq!(expected_token, bool_lit.value)
-            }
+            // Expression::Integer(int_lit) => {
+            //     assert_eq!(expected_token, int_lit);
+            // }
+            // Expression::Bool(bool_lit) => {
+            //     assert_eq!(expected_token, bool_lit.value)
+            // }
             Expression::Ident(id) => {
                 assert_eq!(expected_token, id.token)
             }

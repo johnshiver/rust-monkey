@@ -1,6 +1,5 @@
 use crate::ast::{Expression, Node, Program, Statement};
 use crate::object::Object;
-use std::borrow::Borrow;
 
 pub fn Eval(node: Node) -> Object {
     match node {
@@ -19,7 +18,10 @@ fn eval_statement(statement: &Statement) -> Object {
 }
 
 fn eval_expression(exp: &Expression) -> Object {
-    panic!("implement me")
+    match exp {
+        Expression::Integer(int) => return Object::Integer(*int),
+        _ => panic!("expression not supported yet"),
+    }
 }
 
 #[cfg(test)]
@@ -39,17 +41,17 @@ mod tests {
 
     #[test]
     fn eval_integer_expression() {
-        struct test<'a> {
+        struct Test<'a> {
             input: &'a str,
             expected: i64,
         }
 
         let tests = vec![
-            test {
+            Test {
                 input: "5",
                 expected: 5,
             },
-            test {
+            Test {
                 input: "10",
                 expected: 10,
             },

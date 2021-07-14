@@ -28,27 +28,27 @@ impl fmt::Display for Statement {
 
 pub enum Expression {
     Ident(Box<IdentExpression>),
-    IntegerLiteral(Box<IntegerLiteralExpression>),
-    BoolLiteral(Box<BooleanLiteralExpression>),
+    Integer(i64),
+    Bool(bool),
     Prefix(Box<PrefixExpression>),
     Infix(Box<InfixExpression>),
     IfStatement(Box<IfExpression>),
     BlockStatement(Box<BlockStatement>),
-    FunctionLiteral(Box<FunctionLiteralExpression>),
+    Function(Box<FunctionExpression>),
     Call(Box<CallExpression>),
 }
 
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
-            Expression::Ident(idt) => write!(f, "{}", idt),
-            Expression::IntegerLiteral(il) => write!(f, "{}", il),
-            Expression::BoolLiteral(il) => write!(f, "{}", il),
+            Expression::Ident(ident) => write!(f, "{}", ident),
+            Expression::Integer(i) => write!(f, "{}", i),
+            Expression::Bool(b) => write!(f, "{}", b),
             Expression::Prefix(pfx) => write!(f, "{}", pfx),
             Expression::Infix(ifx) => write!(f, "{}", ifx),
             Expression::IfStatement(if_stmt) => write!(f, "{}", if_stmt),
             Expression::BlockStatement(blk) => write!(f, "{}", blk),
-            Expression::FunctionLiteral(fl) => write!(f, "{}", fl),
+            Expression::Function(fl) => write!(f, "{}", fl),
             Expression::Call(call) => write!(f, "{}", call),
         }
     }
@@ -137,23 +137,6 @@ impl IdentExpression {
 impl fmt::Display for IdentExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.token)
-    }
-}
-
-pub struct IntegerLiteralExpression {
-    pub value: Token, // return token
-}
-
-impl IntegerLiteralExpression {
-    pub fn new(value: i64) -> Self {
-        let tok = Token::Int(value);
-        IntegerLiteralExpression { value: tok }
-    }
-}
-
-impl fmt::Display for IntegerLiteralExpression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.value)
     }
 }
 
@@ -281,15 +264,15 @@ impl fmt::Display for BlockStatement {
     }
 }
 
-pub struct FunctionLiteralExpression {
+pub struct FunctionExpression {
     pub token: Token,
     pub parameters: Vec<IdentExpression>,
     pub body: BlockStatement,
 }
 
-impl FunctionLiteralExpression {
+impl FunctionExpression {
     pub fn new(token: Token, parameters: Vec<IdentExpression>, body: BlockStatement) -> Self {
-        FunctionLiteralExpression {
+        FunctionExpression {
             token,
             parameters,
             body,
@@ -297,7 +280,7 @@ impl FunctionLiteralExpression {
     }
 }
 
-impl fmt::Display for FunctionLiteralExpression {
+impl fmt::Display for FunctionExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let mut param_strs = Vec::new();
         for p in &self.parameters {
