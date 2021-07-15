@@ -1041,16 +1041,11 @@ mod tests {
         let statement = program.statements.index(0);
         match statement {
             ExpressionStatement(exp) => match exp {
-                Expression::Call(call) => match &call.function {
-                    Expression::Ident(ident) => {
-                        test_ident(Token::Ident("add".to_string()), &ident);
-                    }
-                    _ => {
-                        panic!("expected an ident expression for func")
-                    }
-                },
+                Expression::Call(call) => {
+                    test_expression_token_value(Token::Ident("add".to_string()), &call.function);
+                }
                 _ => {
-                    panic!("expected ident expression")
+                    panic!("expected call expression")
                 }
             },
             _ => {
@@ -1106,12 +1101,17 @@ mod tests {
 
     fn test_expression_token_value(expected_token: Token, expression: &Expression) {
         match expression {
-            // Expression::Integer(int_lit) => {
-            //     assert_eq!(expected_token, int_lit);
-            // }
-            // Expression::Bool(bool_lit) => {
-            //     assert_eq!(expected_token, bool_lit.value)
-            // }
+            Expression::Integer(int_lit) => {
+                assert_eq!(expected_token, Token::Int(*int_lit));
+            }
+            Expression::Bool(bool_lit) => match bool_lit {
+                true => {
+                    assert_eq!(expected_token, Token::True)
+                }
+                false => {
+                    assert_eq!(expected_token, Token::False)
+                }
+            },
             Expression::Ident(id) => {
                 assert_eq!(expected_token, id.token)
             }
@@ -1120,8 +1120,27 @@ mod tests {
             }
         }
     }
-    fn test_ident(expected_token: Token, ident: &IdentExpression) {
-        assert_eq!(ident.token, expected_token)
+
+    fn test_ident(expected_token: Token, id_exp: &IdentExpression) {
+        assert_eq!(expected_token, id_exp.token)
+    }
+
+    fn test_int_expression(expected_int: i64, expression: &Expression) {
+        match expression {
+            Expression::Integer(i) => {
+                assert_eq!(expected_int, *i)
+            }
+            _ => panic!("expected int expression"),
+        }
+    }
+
+    fn test_bool_expression(expected_bool: bool, expression: &Expression) {
+        match expression {
+            Expression::Bool(b) => {
+                assert_eq!(expected_bool, *b)
+            }
+            _ => panic!("expected bool expression"),
+        }
     }
 
     fn test_setup(input: &str) -> Box<Program> {
