@@ -3,6 +3,10 @@ use crate::object::Object;
 
 pub type EvalResult = Result<Object, EvalError>;
 
+const TRUE: Object = Object::Boolean(true);
+const FALSE: Object = Object::Boolean(false);
+const NULL: Object = Object::Null;
+
 #[derive(Debug)]
 pub struct EvalError {
     pub message: String,
@@ -34,6 +38,10 @@ fn eval_statement(statement: &Statement) -> Object {
 fn eval_expression(exp: &Expression) -> Object {
     match exp {
         Expression::Integer(int) => return Object::Integer(*int),
+        Expression::Bool(b) => match *b {
+            true => TRUE,
+            false => FALSE,
+        },
         _ => panic!("expression not supported yet"),
     }
 }
@@ -64,6 +72,17 @@ mod tests {
         }
     }
 
+    fn test_bool_object(obj: Object, expected: bool) {
+        match obj {
+            Object::Boolean(b) => {
+                assert_eq!(expected, b);
+            }
+            _ => {
+                panic!("expected object bool")
+            }
+        }
+    }
+
     #[test]
     fn eval_integer_expression() {
         struct Test<'a> {
@@ -85,6 +104,32 @@ mod tests {
         for t in tests {
             match test_eval(t.input) {
                 Ok(obj) => test_int_object(obj, t.expected),
+                Err(e) => panic!("received unexpected eval error {}", e.message),
+            }
+        }
+    }
+
+    #[test]
+    fn eval_bool_expression() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: bool,
+        }
+
+        let tests = vec![
+            Test {
+                input: "true",
+                expected: true,
+            },
+            Test {
+                input: "false",
+                expected: false,
+            },
+        ];
+
+        for t in tests {
+            match test_eval(t.input) {
+                Ok(obj) => test_bool_object(obj, t.expected),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
