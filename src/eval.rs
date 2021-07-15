@@ -54,13 +54,13 @@ fn eval_expression(exp: &Expression) -> Object {
 
 fn eval_prefix_expression(operator: &Token, right: Object) -> Object {
     match operator {
-        Token::Bang => eval_bang_operator_expression(right),
+        Token::Bang => eval_bang_prefix_operator_expression(right),
         Token::Minus => eval_minus_prefix_operator_expression(right),
         _ => Null,
     }
 }
 
-fn eval_bang_operator_expression(right: Object) -> Object {
+fn eval_bang_prefix_operator_expression(right: Object) -> Object {
     match right {
         TRUE => FALSE,
         FALSE => TRUE,
