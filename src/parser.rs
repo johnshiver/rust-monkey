@@ -1125,24 +1125,6 @@ mod tests {
         assert_eq!(expected_token, id_exp.token)
     }
 
-    fn test_int_expression(expected_int: i64, expression: &Expression) {
-        match expression {
-            Expression::Integer(i) => {
-                assert_eq!(expected_int, *i)
-            }
-            _ => panic!("expected int expression"),
-        }
-    }
-
-    fn test_bool_expression(expected_bool: bool, expression: &Expression) {
-        match expression {
-            Expression::Bool(b) => {
-                assert_eq!(expected_bool, *b)
-            }
-            _ => panic!("expected bool expression"),
-        }
-    }
-
     fn test_setup(input: &str) -> Box<Program> {
         let l = Lexer::new(input);
         let mut parser = Parser::new(l);
