@@ -134,4 +134,45 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_bang_operator() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: bool,
+        }
+
+        let tests = vec![
+            Test {
+                input: "!true",
+                expected: true,
+            },
+            Test {
+                input: "!false",
+                expected: true,
+            },
+            Test {
+                input: "!5",
+                expected: false,
+            },
+            Test {
+                input: "!!true",
+                expected: true,
+            },
+            Test {
+                input: "!!false",
+                expected: false,
+            },
+            Test {
+                input: "!!5",
+                expected: true,
+            },
+        ];
+        for test in tests {
+            match test_eval(test.input) {
+                Ok(obj) => test_bool_object(obj, test.expected),
+                Err(e) => panic!("received unexpected eval error {}", e.message),
+            }
+        }
+    }
 }
