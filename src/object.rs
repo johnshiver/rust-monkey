@@ -4,6 +4,7 @@ const INTEGER_OBJ: ObjectType = "INTEGER";
 const BOOLEAN_OBJ: ObjectType = "BOOLEAN";
 const NULL_OBJ: ObjectType = "NULL";
 
+#[derive(PartialEq, Eq)]
 pub enum Object {
     Integer(i64),
     Boolean(bool),

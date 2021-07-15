@@ -642,7 +642,7 @@ mod tests {
                 Statement::ExpressionStatement(stmt) => match stmt {
                     Expression::Prefix(prefix) => {
                         // check prefix operator
-                        assert_eq!(t.expected_operator, prefix.prefix_operator);
+                        assert_eq!(t.expected_operator, prefix.operator);
                         // check prefix val
                         test_expression_token_value(t.expected_val, &prefix.right);
                     }

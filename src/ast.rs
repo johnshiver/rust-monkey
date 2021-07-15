@@ -157,7 +157,7 @@ impl fmt::Display for BooleanLiteralExpression {
 }
 
 pub struct PrefixExpression {
-    pub prefix_operator: Token, // prefix token, ! or -
+    pub operator: Token, // prefix token, ! or -
     pub right: Expression,
 }
 
@@ -166,7 +166,7 @@ impl PrefixExpression {
         // TODO: could validate token to ensure its prefix token
         //       would require refactor for better error handling
         PrefixExpression {
-            prefix_operator: prefix,
+            operator: prefix,
             right: exp,
         }
     }
@@ -174,7 +174,7 @@ impl PrefixExpression {
 
 impl fmt::Display for PrefixExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "({}{})", self.prefix_operator, self.right)
+        write!(f, "({}{})", self.operator, self.right)
     }
 }
 

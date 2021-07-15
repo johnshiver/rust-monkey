@@ -1,5 +1,7 @@
 use crate::ast::{Expression, Node, Program, Statement};
 use crate::object::Object;
+use crate::object::Object::Null;
+use crate::token::Token;
 
 pub type EvalResult = Result<Object, EvalError>;
 
@@ -42,7 +44,35 @@ fn eval_expression(exp: &Expression) -> Object {
             true => TRUE,
             false => FALSE,
         },
+        Expression::Prefix(pfx) => {
+            let right = eval_expression(&pfx.right);
+            eval_prefix_expression(&pfx.operator, right)
+        }
         _ => panic!("expression not supported yet"),
+    }
+}
+
+fn eval_prefix_expression(operator: &Token, right: Object) -> Object {
+    match operator {
+        Token::Bang => eval_bang_operator_expression(right),
+        Token::Minus => eval_minus_prefix_operator_expression(right),
+        _ => Null,
+    }
+}
+
+fn eval_bang_operator_expression(right: Object) -> Object {
+    match right {
+        TRUE => FALSE,
+        FALSE => TRUE,
+        NULL => NULL,
+        _ => FALSE,
+    }
+}
+
+fn eval_minus_prefix_operator_expression(right: Object) -> Object {
+    match right {
+        Object::Integer(i) => Object::Integer(-i),
+        _ => NULL,
     }
 }
 
@@ -99,6 +129,14 @@ mod tests {
                 input: "10",
                 expected: 10,
             },
+            Test {
+                input: "-5",
+                expected: -5,
+            },
+            Test {
+                input: "-10",
+                expected: -10,
+            },
         ];
 
         for t in tests {
@@ -145,7 +183,7 @@ mod tests {
         let tests = vec![
             Test {
                 input: "!true",
-                expected: true,
+                expected: false,
             },
             Test {
                 input: "!false",
