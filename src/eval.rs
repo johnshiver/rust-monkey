@@ -78,6 +78,10 @@ fn eval_integer_infix_expression(operator: &Token, left: i64, right: i64) -> Obj
         Token::Minus => Object::Integer(left - right),
         Token::Asterisk => Object::Integer(left * right),
         Token::Slash => Object::Integer(left / right),
+        Token::LT => Object::Boolean(left < right),
+        Token::GT => Object::Boolean(left > right),
+        Token::EQ => Object::Boolean(left == right),
+        Token::NEQ => Object::Boolean(left != right),
         _ => NULL,
     }
 }
@@ -224,6 +228,38 @@ mod tests {
             Test {
                 input: "false",
                 expected: false,
+            },
+            Test {
+                input: "1 < 2",
+                expected: true,
+            },
+            Test {
+                input: "1 > 2",
+                expected: false,
+            },
+            Test {
+                input: "1 < 1",
+                expected: false,
+            },
+            Test {
+                input: "1 > 1",
+                expected: false,
+            },
+            Test {
+                input: "1 == 1",
+                expected: true,
+            },
+            Test {
+                input: "1 != 1",
+                expected: false,
+            },
+            Test {
+                input: "1 == 2",
+                expected: false,
+            },
+            Test {
+                input: "1 != 2",
+                expected: true,
             },
         ];
 
