@@ -51,7 +51,7 @@ fn eval_expression(exp: &Expression) -> Object {
         Expression::Infix(ifx) => {
             let right = eval_expression(&ifx.right);
             let left = eval_expression(&ifx.left);
-            eval_infix_expression(&ifx.operator, left, right)
+            eval_infix_expression(&ifx.operator, &left, &right)
         }
         _ => panic!("expression not supported yet"),
     }
@@ -65,10 +65,15 @@ fn eval_prefix_expression(operator: &Token, right: Object) -> Object {
     }
 }
 
-fn eval_infix_expression(operator: &Token, left: Object, right: Object) -> Object {
-    match (left, right) {
-        (Object::Integer(l), Object::Integer(r)) => eval_integer_infix_expression(operator, l, r),
-        (_, _) => return NULL,
+fn eval_infix_expression(operator: &Token, left: &Object, right: &Object) -> Object {
+    match (operator, left, right) {
+        (_, Object::Integer(l), Object::Integer(r)) => {
+            eval_integer_infix_expression(operator, *l, *r)
+        }
+        // these work because we represent TRUE and FALSE as sentinel values
+        (Token::EQ, _, _) => Object::Boolean(left == right),
+        (Token::NEQ, _, _) => Object::Boolean(left != right),
+        (_, _, _) => return NULL,
     }
 }
 
@@ -259,6 +264,42 @@ mod tests {
             },
             Test {
                 input: "1 != 2",
+                expected: true,
+            },
+            Test {
+                input: "true == true",
+                expected: true,
+            },
+            Test {
+                input: "false == false",
+                expected: true,
+            },
+            Test {
+                input: "true == false",
+                expected: false,
+            },
+            Test {
+                input: "true != false",
+                expected: true,
+            },
+            Test {
+                input: "false != true",
+                expected: true,
+            },
+            Test {
+                input: "(1 < 2) == true",
+                expected: true,
+            },
+            Test {
+                input: "(1 < 2) == false",
+                expected: false,
+            },
+            Test {
+                input: "(1 > 2) == true",
+                expected: false,
+            },
+            Test {
+                input: "(1 > 2) == false",
                 expected: true,
             },
         ];
