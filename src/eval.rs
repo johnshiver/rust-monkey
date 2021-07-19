@@ -1,4 +1,4 @@
-use crate::ast::{Expression, Node, Program, Statement};
+use crate::ast::{BlockStatement, Expression, IfExpression, Node, Program, Statement};
 use crate::object::Object;
 use crate::object::Object::Null;
 use crate::token::Token;
@@ -16,42 +16,67 @@ pub struct EvalError {
 
 pub fn Eval(node: Node) -> EvalResult {
     match node {
-        Node::Program(prg) => Ok(eval_program(&prg)),
-        Node::Statement(stm) => Ok(eval_statement(&stm)),
-        Node::Expression(exp) => Ok(eval_expression(&exp)),
+        Node::Program(prg) => eval_program(&prg),
+        Node::Statement(stm) => eval_statement(&stm),
+        Node::Expression(exp) => eval_expression(&exp),
     }
 }
 
-fn eval_program(program: &Program) -> Object {
-    let mut result = Object::Null;
+fn eval_program(program: &Program) -> EvalResult {
+    let mut result = Ok(NULL);
     for stmt in &program.statements {
         result = eval_statement(&stmt);
     }
     result
 }
 
-fn eval_statement(statement: &Statement) -> Object {
+fn eval_statement(statement: &Statement) -> EvalResult {
     match statement {
         Statement::ExpressionStatement(exp) => eval_expression(exp),
         _ => panic!("not implemented"),
     }
 }
 
-fn eval_expression(exp: &Expression) -> Object {
+fn eval_expression(exp: &Expression) -> EvalResult {
     match exp {
-        Expression::Integer(int) => return Object::Integer(*int),
+        Expression::Integer(int) => return Ok(Object::Integer(*int)),
         Expression::Bool(b) => match *b {
-            true => TRUE,
-            false => FALSE,
+            true => Ok(TRUE),
+            false => Ok(FALSE),
         },
         Expression::Prefix(pfx) => {
-            let right = eval_expression(&pfx.right);
-            eval_prefix_expression(&pfx.operator, right)
+            let right = match eval_expression(&pfx.right) {
+                Ok(o) => o,
+                Err(e) => return Err(e),
+            };
+            Ok(eval_prefix_expression(&pfx.operator, right))
         }
         Expression::Infix(ifx) => {
-            let right = eval_expression(&ifx.right);
-            let left = eval_expression(&ifx.left);
-            eval_infix_expression(&ifx.operator, &left, &right)
+            let right = match eval_expression(&ifx.right) {
+                Ok(o) => o,
+                Err(e) => return Err(e),
+            };
+            let left = match eval_expression(&ifx.left) {
+                Ok(o) => o,
+                Err(e) => return Err(e),
+            };
+            Ok(eval_infix_expression(&ifx.operator, &left, &right))
+        }
+        Expression::BlockStatement(blk) => eval_block(blk),
+        Expression::IfStatement(if_stmt) => {
+            // TODO: perhaps consequence should just be an expression
+            let evaluated = match eval_expression(&if_stmt.condition) {
+                Ok(eval) => eval,
+                Err(e) => return Err(e),
+            };
+            if is_truthy(evaluated) {
+                return eval_block(&if_stmt.consequence);
+            }
+
+            match &if_stmt.alternative {
+                Some(alt) => eval_block(&alt),
+                None => Ok(NULL),
+            }
         }
         _ => panic!("expression not supported yet"),
     }
@@ -107,6 +132,24 @@ fn eval_minus_prefix_operator_expression(right: Object) -> Object {
     }
 }
 
+fn is_truthy(obj: Object) -> bool {
+    match obj {
+        NULL => false,
+        TRUE => true,
+        FALSE => false,
+        _ => true,
+    }
+}
+
+fn eval_block(block: &BlockStatement) -> EvalResult {
+    let mut result = Ok(NULL);
+
+    for stmt in &block.statements {
+        result = eval_statement(stmt);
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast::Node;
@@ -122,10 +165,13 @@ mod tests {
         Eval(program)
     }
 
-    fn test_int_object(obj: Object, expected: i64) {
+    fn test_int_object(obj: Object, expected: Option<i64>) {
         match obj {
             Object::Integer(i) => {
-                assert_eq!(expected, i);
+                assert_eq!(expected.unwrap(), i);
+            }
+            Object::Null => {
+                assert_eq!(expected.is_none(), true);
             }
             _ => {
                 panic!("expected object integer")
@@ -212,7 +258,7 @@ mod tests {
 
         for t in tests {
             match test_eval(t.input) {
-                Ok(obj) => test_int_object(obj, t.expected),
+                Ok(obj) => test_int_object(obj, Some(t.expected)),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
@@ -348,6 +394,51 @@ mod tests {
         for test in tests {
             match test_eval(test.input) {
                 Ok(obj) => test_bool_object(obj, test.expected),
+                Err(e) => panic!("received unexpected eval error {}", e.message),
+            }
+        }
+    }
+
+    #[test]
+    fn test_if_else_expressions() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: Option<i64>,
+        }
+
+        let tests = vec![
+            Test {
+                input: "if (true) { 10 }",
+                expected: Some(10),
+            },
+            Test {
+                input: "if (false) { 10 }",
+                expected: None,
+            },
+            Test {
+                input: "if (1) { 10 }",
+                expected: Some(10),
+            },
+            Test {
+                input: "if (1 < 2) { 10 }",
+                expected: Some(10),
+            },
+            Test {
+                input: "if (1 > 2) { 10 }",
+                expected: None,
+            },
+            Test {
+                input: "if (1 > 2) { 10 } else { 20 }",
+                expected: Some(20),
+            },
+            Test {
+                input: "if (1 < 2) { 10 } else { 20 }",
+                expected: Some(10),
+            },
+        ];
+        for test in tests {
+            match test_eval(test.input) {
+                Ok(obj) => test_int_object(obj, test.expected),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
