@@ -23,8 +23,21 @@ pub fn eval(node: Node) -> EvalResult {
     }
 }
 
-fn eval_program(program: &Program) -> EvalResult {
-    eval_statements(&program.statements)
+fn eval_program(prog: &Program) -> EvalResult {
+    let mut result = Rc::new(Null);
+    for stmt in &prog.statements {
+        let res = match eval_statement(stmt) {
+            Ok(r) => r,
+            Err(e) => return Err(e),
+        };
+
+        match &*res {
+            Object::Return(r) => return Ok(r),
+            _ => result = res,
+        }
+    }
+
+    Ok(result)
 }
 
 fn eval_statement(statement: &Statement) -> EvalResult {
@@ -32,7 +45,7 @@ fn eval_statement(statement: &Statement) -> EvalResult {
         Statement::ExpressionStatement(exp) => eval_expression(exp),
         Statement::Return(ret) => {
             let value = eval_expression(&ret.value)?;
-            return Ok(Object::Return(Rc::new(value)));
+            return Ok(Object::Return(Rc::new(*value)));
         }
         _ => panic!("not implemented"),
     }
@@ -40,17 +53,20 @@ fn eval_statement(statement: &Statement) -> EvalResult {
 
 fn eval_expression(exp: &Expression) -> EvalResult {
     match exp {
-        Expression::Integer(int) => return Ok(Object::Integer(*int)),
+        Expression::Integer(int) => return Ok(Rc::new(Object::Integer(*int))),
         Expression::Bool(b) => match *b {
-            true => Ok(TRUE),
-            false => Ok(FALSE),
+            true => Ok(Rc::new(TRUE)),
+            false => Ok(Rc::new(FALSE)),
         },
         Expression::Prefix(pfx) => {
             let right = match eval_expression(&pfx.right) {
                 Ok(o) => o,
                 Err(e) => return Err(e),
             };
-            Ok(eval_prefix_expression(&pfx.operator, right))
+            Ok(Rc::new(eval_prefix_expression(
+                &pfx.operator,
+                right.as_ref(),
+            )))
         }
         Expression::Infix(ifx) => {
             let right = match eval_expression(&ifx.right) {
@@ -61,7 +77,7 @@ fn eval_expression(exp: &Expression) -> EvalResult {
                 Ok(o) => o,
                 Err(e) => return Err(e),
             };
-            Ok(eval_infix_expression(&ifx.operator, &left, &right))
+            Ok(Rc::new(eval_infix_expression(&ifx.operator, &left, &right)))
         }
         Expression::BlockStatement(blk) => eval_block(blk),
         Expression::IfStatement(if_stmt) => {
@@ -76,14 +92,14 @@ fn eval_expression(exp: &Expression) -> EvalResult {
 
             match &if_stmt.alternative {
                 Some(alt) => eval_block(&alt),
-                None => Ok(NULL),
+                None => Ok(Rc::new(NULL)),
             }
         }
         _ => panic!("expression not supported yet"),
     }
 }
 
-fn eval_prefix_expression(operator: &Token, right: Object) -> Object {
+fn eval_prefix_expression(operator: &Token, right: &Object) -> Object {
     match operator {
         Token::Bang => eval_bang_prefix_operator_expression(right),
         Token::Minus => eval_minus_prefix_operator_expression(right),
@@ -117,8 +133,8 @@ fn eval_integer_infix_expression(operator: &Token, left: i64, right: i64) -> Obj
     }
 }
 
-fn eval_bang_prefix_operator_expression(right: Object) -> Object {
-    match right {
+fn eval_bang_prefix_operator_expression(right: &Object) -> Object {
+    match *right {
         TRUE => FALSE,
         FALSE => TRUE,
         NULL => NULL,
@@ -126,15 +142,18 @@ fn eval_bang_prefix_operator_expression(right: Object) -> Object {
     }
 }
 
-fn eval_minus_prefix_operator_expression(right: Object) -> Object {
+fn eval_minus_prefix_operator_expression(right: &Object) -> Object {
     match right {
-        Object::Integer(i) => Object::Integer(-i),
+        Object::Integer(i) => {
+            let ni = *i;
+            Object::Integer(-ni)
+        }
         _ => NULL,
     }
 }
 
-fn is_truthy(obj: Object) -> bool {
-    match obj {
+fn is_truthy(obj: Rc<Object>) -> bool {
+    match *obj {
         NULL => false,
         TRUE => true,
         FALSE => false,
@@ -147,15 +166,15 @@ fn eval_block(block: &BlockStatement) -> EvalResult {
 }
 
 fn eval_statements(statements: &Vec<Statement>) -> EvalResult {
-    let mut result = Null;
+    let mut result = Rc::new(Null);
     for stmt in statements {
         let res = match eval_statement(stmt) {
             Ok(r) => r,
             Err(e) => return Err(e),
         };
 
-        match res {
-            Object::Return(r) => return Ok(r),
+        match *res {
+            Object::Return(_) => return Ok(res),
             _ => result = res,
         }
     }
@@ -170,6 +189,7 @@ mod tests {
     use crate::lexer::Lexer;
     use crate::object::Object;
     use crate::parser::Parser;
+    use std::ops::Deref;
 
     fn test_eval(input: &str) -> EvalResult {
         let l = Lexer::new(input);
@@ -178,10 +198,10 @@ mod tests {
         eval(program)
     }
 
-    fn test_int_object(obj: Object, expected: Option<i64>) {
+    fn test_int_object(obj: &Object, expected: Option<i64>) {
         match obj {
             Object::Integer(i) => {
-                assert_eq!(expected.unwrap(), i);
+                assert_eq!(expected.unwrap(), *i);
             }
             Object::Null => {
                 assert_eq!(expected.is_none(), true);
@@ -192,10 +212,10 @@ mod tests {
         }
     }
 
-    fn test_bool_object(obj: Object, expected: bool) {
+    fn test_bool_object(obj: &Object, expected: bool) {
         match obj {
             Object::Boolean(b) => {
-                assert_eq!(expected, b);
+                assert_eq!(expected, *b);
             }
             _ => {
                 panic!("expected object bool")
@@ -271,7 +291,7 @@ mod tests {
 
         for t in tests {
             match test_eval(t.input) {
-                Ok(obj) => test_int_object(obj, Some(t.expected)),
+                Ok(obj) => test_int_object(&obj, Some(t.expected)),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
@@ -365,7 +385,7 @@ mod tests {
 
         for t in tests {
             match test_eval(t.input) {
-                Ok(obj) => test_bool_object(obj, t.expected),
+                Ok(obj) => test_bool_object(&obj, t.expected),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
@@ -406,7 +426,7 @@ mod tests {
         ];
         for test in tests {
             match test_eval(test.input) {
-                Ok(obj) => test_bool_object(obj, test.expected),
+                Ok(obj) => test_bool_object(&obj, test.expected),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
@@ -451,7 +471,7 @@ mod tests {
         ];
         for test in tests {
             match test_eval(test.input) {
-                Ok(obj) => test_int_object(obj, test.expected),
+                Ok(obj) => test_int_object(&obj, test.expected),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
@@ -484,7 +504,7 @@ mod tests {
         ];
         for test in tests {
             match test_eval(test.input) {
-                Ok(obj) => test_int_object(obj, Some(test.expected)),
+                Ok(obj) => test_int_object(&obj, Some(test.expected)),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
