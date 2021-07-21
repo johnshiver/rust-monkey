@@ -1,5 +1,5 @@
 use crate::ast::Node;
-use crate::eval::Eval;
+use crate::eval::eval;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::token::Token::Eof;
@@ -21,8 +21,8 @@ pub fn start<R: BufRead, W: Write>(reader: &mut R, writer: &mut W) {
             }
             continue;
         }
-        match Eval(program) {
-            Ok(obj) => println!("{}", obj.Inspect()),
+        match eval(program) {
+            Ok(obj) => println!("{}", obj),
             Err(e) => println!("evaluation error: {}", e.message),
         }
     }

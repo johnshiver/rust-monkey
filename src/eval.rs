@@ -2,8 +2,9 @@ use crate::ast::{BlockStatement, Expression, IfExpression, Node, Program, Statem
 use crate::object::Object;
 use crate::object::Object::Null;
 use crate::token::Token;
+use std::rc::Rc;
 
-pub type EvalResult = Result<Object, EvalError>;
+pub type EvalResult = Result<Rc<Object>, EvalError>;
 
 const TRUE: Object = Object::Boolean(true);
 const FALSE: Object = Object::Boolean(false);
@@ -14,7 +15,7 @@ pub struct EvalError {
     pub message: String,
 }
 
-pub fn Eval(node: Node) -> EvalResult {
+pub fn eval(node: Node) -> EvalResult {
     match node {
         Node::Program(prg) => eval_program(&prg),
         Node::Statement(stm) => eval_statement(&stm),
@@ -23,16 +24,16 @@ pub fn Eval(node: Node) -> EvalResult {
 }
 
 fn eval_program(program: &Program) -> EvalResult {
-    let mut result = Ok(NULL);
-    for stmt in &program.statements {
-        result = eval_statement(&stmt);
-    }
-    result
+    eval_statements(&program.statements)
 }
 
 fn eval_statement(statement: &Statement) -> EvalResult {
     match statement {
         Statement::ExpressionStatement(exp) => eval_expression(exp),
+        Statement::Return(ret) => {
+            let value = eval_expression(&ret.value)?;
+            return Ok(Object::Return(Rc::new(value)));
+        }
         _ => panic!("not implemented"),
     }
 }
@@ -142,18 +143,30 @@ fn is_truthy(obj: Object) -> bool {
 }
 
 fn eval_block(block: &BlockStatement) -> EvalResult {
-    let mut result = Ok(NULL);
+    eval_statements(&block.statements)
+}
 
-    for stmt in &block.statements {
-        result = eval_statement(stmt);
+fn eval_statements(statements: &Vec<Statement>) -> EvalResult {
+    let mut result = Null;
+    for stmt in statements {
+        let res = match eval_statement(stmt) {
+            Ok(r) => r,
+            Err(e) => return Err(e),
+        };
+
+        match res {
+            Object::Return(r) => return Ok(r),
+            _ => result = res,
+        }
     }
-    result
+
+    Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::ast::Node;
-    use crate::eval::{Eval, EvalResult};
+    use crate::eval::{eval, EvalResult};
     use crate::lexer::Lexer;
     use crate::object::Object;
     use crate::parser::Parser;
@@ -162,7 +175,7 @@ mod tests {
         let l = Lexer::new(input);
         let mut p = Parser::new(l);
         let program = p.parse_program();
-        Eval(program)
+        eval(program)
     }
 
     fn test_int_object(obj: Object, expected: Option<i64>) {
@@ -439,6 +452,39 @@ mod tests {
         for test in tests {
             match test_eval(test.input) {
                 Ok(obj) => test_int_object(obj, test.expected),
+                Err(e) => panic!("received unexpected eval error {}", e.message),
+            }
+        }
+    }
+
+    #[test]
+    fn test_return_statements() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: i64,
+        }
+
+        let tests = vec![
+            // Test {
+            //     input: "return 10;",
+            //     expected: 10,
+            // },
+            Test {
+                input: "return 10; 9;",
+                expected: 10,
+            },
+            // Test {
+            //     input: "return 2 * 5; 9;",
+            //     expected: 10,
+            // },
+            // Test {
+            //     input: "9; return 2 * 5; 9;",
+            //     expected: 10,
+            // },
+        ];
+        for test in tests {
+            match test_eval(test.input) {
+                Ok(obj) => test_int_object(obj, Some(test.expected)),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
