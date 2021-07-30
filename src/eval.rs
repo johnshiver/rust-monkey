@@ -220,6 +220,20 @@ mod tests {
         }
     }
 
+    fn test_err_object(obj: &Object, expected: Option<i64>) {
+        match obj {
+            Object::Integer(i) => {
+                assert_eq!(expected.unwrap(), *i);
+            }
+            Object::Null => {
+                assert_eq!(expected.is_none(), true);
+            }
+            _ => {
+                panic!("expected object integer")
+            }
+        }
+    }
+
     #[test]
     fn eval_integer_expression() {
         struct Test<'a> {
@@ -482,22 +496,22 @@ mod tests {
         }
 
         let tests = vec![
-            // Test {
-            //     input: "return 10;",
-            //     expected: 10,
-            // },
-            // Test {
-            //     input: "return 10; 9;",
-            //     expected: 10,
-            // },
-            // Test {
-            //     input: "return 2 * 5; 9;",
-            //     expected: 10,
-            // },
-            // Test {
-            //     input: "9; return 2 * 5; 9;",
-            //     expected: 10,
-            // },
+            Test {
+                input: "return 10;",
+                expected: 10,
+            },
+            Test {
+                input: "return 10; 9;",
+                expected: 10,
+            },
+            Test {
+                input: "return 2 * 5; 9;",
+                expected: 10,
+            },
+            Test {
+                input: "9; return 2 * 5; 9;",
+                expected: 10,
+            },
             Test {
                 input: "if (10 > 1) {
                           if (10 > 1) {
@@ -506,6 +520,56 @@ mod tests {
                            return 1;
                         }",
                 expected: 10,
+            },
+        ];
+        for test in tests {
+            match test_eval(test.input) {
+                Ok(obj) => test_int_object(&obj, Some(test.expected)),
+                Err(e) => panic!("received unexpected eval error {}", e.message),
+            }
+        }
+    }
+
+    #[test]
+    fn test_error_handling() {
+        struct Test<'a, 'b> {
+            input: &'a str,
+            expected: &'b str,
+        }
+
+        let tests = vec![
+            Test {
+                input: "5 + true;",
+                expected: "type mismatch: INTEGER + BOOLEAN",
+            },
+            Test {
+                input: "5 + true; 5;",
+                expected: "type mismatch: INTEGER + BOOLEAN",
+            },
+            Test {
+                input: "-true",
+                expected: "unknown operator: -BOOLEAN",
+            },
+            Test {
+                input: "true + false;",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            Test {
+                input: "5; true + false; 5;",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            Test {
+                input: "if (10 > 1) { true + false; }",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            Test {
+                input: "if (10 > 1) {
+                          if (10 > 1) {
+                            return true + false;
+                          }
+                           return 1;
+                        }",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
             },
         ];
         for test in tests {
