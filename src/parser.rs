@@ -205,6 +205,9 @@ impl<'a> Parser<'a> {
             Ok(exp) => exp,
             Err(e) => return Err(e),
         };
+        if self.peek_token_is(&Token::Semicolon) {
+            self.advance_tokens();
+        }
         let return_stmt = ReturnStatement::new(stmt);
         Ok(Return(Box::new(return_stmt)))
     }

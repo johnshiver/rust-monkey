@@ -163,12 +163,8 @@ fn is_truthy(obj: Rc<Object>) -> bool {
 }
 
 fn eval_block(block: &BlockStatement) -> EvalResult {
-    eval_statements(&block.statements)
-}
-
-fn eval_statements(statements: &Vec<Statement>) -> EvalResult {
     let mut result = Rc::new(Null);
-    for stmt in statements {
+    for stmt in &block.statements {
         let res = match eval_statement(stmt) {
             Ok(r) => r,
             Err(e) => return Err(e),
@@ -490,10 +486,10 @@ mod tests {
             //     input: "return 10;",
             //     expected: 10,
             // },
-            Test {
-                input: "return 10; 9;",
-                expected: 10,
-            },
+            // Test {
+            //     input: "return 10; 9;",
+            //     expected: 10,
+            // },
             // Test {
             //     input: "return 2 * 5; 9;",
             //     expected: 10,
@@ -502,6 +498,15 @@ mod tests {
             //     input: "9; return 2 * 5; 9;",
             //     expected: 10,
             // },
+            Test {
+                input: "if (10 > 1) {
+                          if (10 > 1) {
+                            return 10;
+                          }
+                           return 1;
+                        }",
+                expected: 10,
+            },
         ];
         for test in tests {
             match test_eval(test.input) {
