@@ -8,12 +8,12 @@ const BOOLEAN_OBJ: ObjectType = "BOOLEAN";
 const NULL_OBJ: ObjectType = "NULL";
 const RETURN_VALUE_OBJ: ObjectType = "RETURN_VALUE";
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Object {
     Integer(i64),
     Boolean(bool),
     Null,
-    Return(Rc<Object>),
+    Return(Rc<Return>),
 }
 
 impl Object {
@@ -22,7 +22,7 @@ impl Object {
             Object::Integer(val) => format!("{}", val),
             Object::Boolean(val) => format!("{}", val),
             Object::Null => "Null".to_string(),
-            Object::Return(val) => format!("{}", val),
+            Object::Return(obj) => format!("{}", obj.value),
         }
     }
 
@@ -41,3 +41,15 @@ impl Display for Object {
         write!(f, "{}", self.Inspect())
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct Return {
+    pub value: Rc<Object>,
+}
+
+impl PartialEq for Return {
+    fn eq(&self, other: &Self) -> bool {
+        todo!()
+    }
+}
+impl Eq for Return {}

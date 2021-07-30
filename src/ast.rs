@@ -114,8 +114,7 @@ impl ReturnStatement {
 
 impl fmt::Display for ReturnStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "return ");
-        write!(f, " {};", self.value)
+        write!(f, "return {};", self.value)
     }
 }
 

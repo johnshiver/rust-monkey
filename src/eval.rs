@@ -1,4 +1,5 @@
 use crate::ast::{BlockStatement, Expression, IfExpression, Node, Program, Statement};
+use crate::object;
 use crate::object::Object;
 use crate::object::Object::Null;
 use crate::token::Token;
@@ -32,7 +33,7 @@ fn eval_program(prog: &Program) -> EvalResult {
         };
 
         match &*res {
-            Object::Return(r) => return Ok(r),
+            Object::Return(r) => return Ok(Rc::clone(&r.value)),
             _ => result = res,
         }
     }
@@ -45,7 +46,7 @@ fn eval_statement(statement: &Statement) -> EvalResult {
         Statement::ExpressionStatement(exp) => eval_expression(exp),
         Statement::Return(ret) => {
             let value = eval_expression(&ret.value)?;
-            return Ok(Object::Return(Rc::new(*value)));
+            return Ok(Rc::new(Object::Return(Rc::new(object::Return { value }))));
         }
         _ => panic!("not implemented"),
     }
