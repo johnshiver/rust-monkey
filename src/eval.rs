@@ -34,6 +34,7 @@ fn eval_program(prog: &Program) -> EvalResult {
 
         match &*res {
             Object::Return(r) => return Ok(Rc::clone(&r.value)),
+            Object::Error(err) => return Ok(res),
             _ => result = res,
         }
     }
@@ -104,19 +105,39 @@ fn eval_prefix_expression(operator: &Token, right: &Object) -> Object {
     match operator {
         Token::Bang => eval_bang_prefix_operator_expression(right),
         Token::Minus => eval_minus_prefix_operator_expression(right),
-        _ => Null,
+        _ => {
+            let err_msg = format!("unknown operator: {}{}", operator, right.Type());
+            Object::Error(err_msg)
+        }
     }
 }
 
 fn eval_infix_expression(operator: &Token, left: &Object, right: &Object) -> Object {
+    if left.Type() != right.Type() {
+        let err_msg = format!(
+            "type mismatch: {} {} {}",
+            left.Type(),
+            operator,
+            right.Type()
+        );
+        return Object::Error(err_msg);
+    }
     match (operator, left, right) {
         (_, Object::Integer(l), Object::Integer(r)) => {
             eval_integer_infix_expression(operator, *l, *r)
         }
         // these work because we represent TRUE and FALSE as sentinel values
-        (Token::EQ, _, _) => Object::Boolean(left == right),
-        (Token::NEQ, _, _) => Object::Boolean(left != right),
-        (_, _, _) => return NULL,
+        (Token::EQ, Object::Boolean(_), Object::Boolean(_)) => Object::Boolean(left == right),
+        (Token::NEQ, Object::Boolean(_), Object::Boolean(_)) => Object::Boolean(left != right),
+        (_, _, _) => {
+            let err_msg = format!(
+                "unknown operator: {} {} {}",
+                left.Type(),
+                operator,
+                right.Type()
+            );
+            Object::Error(err_msg)
+        }
     }
 }
 
@@ -130,7 +151,10 @@ fn eval_integer_infix_expression(operator: &Token, left: i64, right: i64) -> Obj
         Token::GT => Object::Boolean(left > right),
         Token::EQ => Object::Boolean(left == right),
         Token::NEQ => Object::Boolean(left != right),
-        _ => NULL,
+        _ => {
+            let err_msg = format!("unknown operator: {} {} {}", left, operator, right);
+            Object::Error(err_msg)
+        }
     }
 }
 
@@ -149,7 +173,10 @@ fn eval_minus_prefix_operator_expression(right: &Object) -> Object {
             let ni = *i;
             Object::Integer(-ni)
         }
-        _ => NULL,
+        _ => {
+            let err_msg = format!("unknown operator: -{}", right.Type());
+            Object::Error(err_msg)
+        }
     }
 }
 
@@ -209,6 +236,17 @@ mod tests {
         }
     }
 
+    fn test_err_object(obj: &Object, expected: &str) {
+        match obj {
+            Object::Error(i) => {
+                assert_eq!(expected.to_string(), *i);
+            }
+            _ => {
+                panic!("expected error object, received {}", obj.Type())
+            }
+        }
+    }
+
     fn test_bool_object(obj: &Object, expected: bool) {
         match obj {
             Object::Boolean(b) => {
@@ -216,20 +254,6 @@ mod tests {
             }
             _ => {
                 panic!("expected object bool")
-            }
-        }
-    }
-
-    fn test_err_object(obj: &Object, expected: Option<i64>) {
-        match obj {
-            Object::Integer(i) => {
-                assert_eq!(expected.unwrap(), *i);
-            }
-            Object::Null => {
-                assert_eq!(expected.is_none(), true);
-            }
-            _ => {
-                panic!("expected object integer")
             }
         }
     }
@@ -574,7 +598,7 @@ mod tests {
         ];
         for test in tests {
             match test_eval(test.input) {
-                Ok(obj) => test_int_object(&obj, Some(test.expected)),
+                Ok(obj) => test_err_object(&obj, test.expected),
                 Err(e) => panic!("received unexpected eval error {}", e.message),
             }
         }
