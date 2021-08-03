@@ -198,7 +198,7 @@ fn eval_block(block: &BlockStatement) -> EvalResult {
         };
 
         match *res {
-            Object::Return(_) => return Ok(res),
+            Object::Return(_) | Object::Error(_) => return Ok(res),
             _ => result = res,
         }
     }
