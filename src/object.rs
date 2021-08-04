@@ -7,7 +7,6 @@ const INTEGER_OBJ: ObjectType = "INTEGER";
 const BOOLEAN_OBJ: ObjectType = "BOOLEAN";
 const NULL_OBJ: ObjectType = "NULL";
 const RETURN_VALUE_OBJ: ObjectType = "RETURN_VALUE";
-const ERROR_OBJ: ObjectType = "ERROR";
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Object {
@@ -15,7 +14,6 @@ pub enum Object {
     Boolean(bool),
     Null,
     Return(Rc<Return>),
-    Error(String),
 }
 
 impl Object {
@@ -25,7 +23,6 @@ impl Object {
             Object::Boolean(val) => format!("{}", val),
             Object::Null => "Null".to_string(),
             Object::Return(obj) => format!("{}", obj.value),
-            Object::Error(e) => format!("{}", e),
         }
     }
 
@@ -35,7 +32,6 @@ impl Object {
             Object::Boolean(_) => BOOLEAN_OBJ,
             Object::Null => NULL_OBJ,
             Object::Return(_) => RETURN_VALUE_OBJ,
-            Object::Error(_) => ERROR_OBJ,
         }
     }
 }
