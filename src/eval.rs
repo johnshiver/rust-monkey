@@ -45,8 +45,14 @@ fn eval_statement(statement: &Statement) -> EvalResult {
     match statement {
         Statement::ExpressionStatement(exp) => eval_expression(exp),
         Statement::Return(ret) => {
-            let value = eval_expression(&ret.value)?;
+            let value = match eval_expression(&ret.value) {
+                Ok(v) => v,
+                Err(e) => Err(e),
+            };
             return Ok(Rc::new(Object::Return(Rc::new(object::Return { value }))));
+        }
+        Statement::Let(let_stmt) => {
+            // let.
         }
         _ => panic!("not implemented"),
     }
@@ -584,11 +590,51 @@ mod tests {
                         }",
                 expected: "unknown operator: BOOLEAN + BOOLEAN",
             },
+            Test {
+                input: "foobar",
+                expected: "identifier not found: foobar",
+            },
         ];
         for test in tests {
             match test_eval(test.input) {
                 Ok(obj) => panic!("received object {}, expected error", obj),
                 Err(e) => assert_eq!(e.message.as_str(), test.expected),
+            }
+        }
+    }
+
+    #[test]
+    fn test_let_statements() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: i64,
+        }
+
+        let tests = vec![
+            Test {
+                input: "let a = 5; a;",
+                expected: 5,
+            },
+            Test {
+                input: "let a = 5 * 5; a;",
+                expected: 25,
+            },
+            Test {
+                input: "let a = 5; let b = a; b;",
+                expected: 5,
+            },
+            Test {
+                input: "let a = 5; let b = a; let c = a + b + 5; c;"
+                expected: 15,
+            },
+        ];
+        for test in tests {
+            match test_eval(test.input) {
+                Ok(obj) => test_int_object(&obj, Some(test.expected)),
+                Err(e) => panic!(
+                    "received an error {}, expected {}",
+                    e.message, test.expected
+                ),
             }
         }
     }

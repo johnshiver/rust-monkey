@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 
@@ -53,3 +54,19 @@ impl PartialEq for Return {
     }
 }
 impl Eq for Return {}
+
+pub struct Environment {
+    pub store: HashMap<String, Object>,
+}
+
+impl Environment {
+    pub fn new() -> Environment {
+        Environment {
+            store: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, key: &str) -> Option<&Object> {
+        self.store.get(key)
+    }
+}
