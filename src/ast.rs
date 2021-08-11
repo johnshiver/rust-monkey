@@ -78,11 +78,11 @@ impl fmt::Display for Program {
 
 pub struct LetStatement {
     pub name: Token,
-    pub value: Option<Expression>,
+    pub value: Expression,
 }
 
 impl LetStatement {
-    pub fn new(name: String, value: Option<Expression>) -> Self {
+    pub fn new(name: String, value: Expression) -> Self {
         let tok = Token::Ident(name);
         LetStatement { name: tok, value }
     }
@@ -90,11 +90,7 @@ impl LetStatement {
 
 impl fmt::Display for LetStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "let {} =", self.name);
-        match self.value.as_ref() {
-            Some(e) => write!(f, " {};", e),
-            None => write!(f, ";"),
-        }
+        write!(f, "let {} = {};", self.name, self.value)
     }
 }
 

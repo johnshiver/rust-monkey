@@ -56,7 +56,7 @@ impl PartialEq for Return {
 impl Eq for Return {}
 
 pub struct Environment {
-    pub store: HashMap<String, Object>,
+    pub store: HashMap<String, Rc<Object>>,
 }
 
 impl Environment {
@@ -66,7 +66,12 @@ impl Environment {
         }
     }
 
-    pub fn get(&self, key: &str) -> Option<&Object> {
-        self.store.get(key)
+    pub fn get(&self, key: &str) -> Option<Rc<Object>> {
+        self.store.get(key).cloned()
+    }
+
+    pub fn set(mut self, key: &str, val: Rc<Object>) -> Rc<Object> {
+        self.store.insert(key.to_string(), val.clone());
+        val
     }
 }

@@ -1,11 +1,15 @@
 use crate::ast::Node;
 use crate::eval::eval;
 use crate::lexer::Lexer;
+use crate::object::Environment;
 use crate::parser::Parser;
 use crate::token::Token::Eof;
+use std::cell::RefCell;
 use std::io::{BufRead, Write};
+use std::rc::Rc;
 
 pub fn start<R: BufRead, W: Write>(reader: &mut R, writer: &mut W) {
+    let env = Rc::new(RefCell::new(Environment::new()));
     loop {
         writer.write(b">> ");
         writer.flush();
@@ -21,7 +25,8 @@ pub fn start<R: BufRead, W: Write>(reader: &mut R, writer: &mut W) {
             }
             continue;
         }
-        match eval(program) {
+        // TODO: do i need to clear env memory?
+        match eval(program, &env) {
             Ok(obj) => println!("{}", obj),
             Err(e) => println!("evaluation error: {}", e.message),
         }

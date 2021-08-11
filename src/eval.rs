@@ -1,11 +1,13 @@
 use crate::ast::{BlockStatement, Expression, IfExpression, Node, Program, Statement};
 use crate::object;
-use crate::object::Object;
 use crate::object::Object::Null;
+use crate::object::{Environment, Object};
 use crate::token::Token;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 pub type EvalResult = Result<Rc<Object>, EvalError>;
+pub type EvalEnv = Rc<RefCell<Environment>>;
 
 const TRUE: Object = Object::Boolean(true);
 const FALSE: Object = Object::Boolean(false);
@@ -16,18 +18,18 @@ pub struct EvalError {
     pub message: String,
 }
 
-pub fn eval(node: Node) -> EvalResult {
+pub fn eval(node: Node, env: &EvalEnv) -> EvalResult {
     match node {
-        Node::Program(prg) => eval_program(&prg),
-        Node::Statement(stm) => eval_statement(&stm),
-        Node::Expression(exp) => eval_expression(&exp),
+        Node::Program(prg) => eval_program(&prg, env),
+        Node::Statement(stm) => eval_statement(&stm, env),
+        Node::Expression(exp) => eval_expression(&exp, env),
     }
 }
 
-fn eval_program(prog: &Program) -> EvalResult {
+fn eval_program(prog: &Program, env: &EvalEnv) -> EvalResult {
     let mut result = Rc::new(Null);
     for stmt in &prog.statements {
-        let res = match eval_statement(stmt) {
+        let res = match eval_statement(stmt, env) {
             Ok(r) => r,
             Err(e) => return Err(e),
         };
@@ -41,24 +43,30 @@ fn eval_program(prog: &Program) -> EvalResult {
     Ok(result)
 }
 
-fn eval_statement(statement: &Statement) -> EvalResult {
+fn eval_statement(statement: &Statement, env: EvalEnv) -> EvalResult {
     match statement {
-        Statement::ExpressionStatement(exp) => eval_expression(exp),
+        Statement::ExpressionStatement(exp) => eval_expression(exp, env),
         Statement::Return(ret) => {
-            let value = match eval_expression(&ret.value) {
+            let value = match eval_expression(&ret.value, env) {
                 Ok(v) => v,
-                Err(e) => Err(e),
+                Err(e) => return Err(e),
             };
             return Ok(Rc::new(Object::Return(Rc::new(object::Return { value }))));
         }
         Statement::Let(let_stmt) => {
-            // let.
+            let value = match eval_expression(&let_stmt.value, env) {
+                Ok(v) => v,
+                Err(e) => return Err(e),
+            };
+            env.borrow_mut()
+                .set(format!("{}", let_stmt.name).as_str(), value);
+            return Ok(value.clone());
         }
         _ => panic!("not implemented"),
     }
 }
 
-fn eval_expression(exp: &Expression) -> EvalResult {
+fn eval_expression(exp: &Expression, env: &EvalEnv) -> EvalResult {
     match exp {
         Expression::Integer(int) => return Ok(Rc::new(Object::Integer(*int))),
         Expression::Bool(b) => match *b {
@@ -66,36 +74,36 @@ fn eval_expression(exp: &Expression) -> EvalResult {
             false => Ok(Rc::new(FALSE)),
         },
         Expression::Prefix(pfx) => {
-            let right = match eval_expression(&pfx.right) {
+            let right = match eval_expression(&pfx.right, env) {
                 Ok(o) => o,
                 Err(e) => return Err(e),
             };
             return eval_prefix_expression(&pfx.operator, right.as_ref());
         }
         Expression::Infix(ifx) => {
-            let right = match eval_expression(&ifx.right) {
+            let right = match eval_expression(&ifx.right, env) {
                 Ok(o) => o,
                 Err(e) => return Err(e),
             };
-            let left = match eval_expression(&ifx.left) {
+            let left = match eval_expression(&ifx.left, env) {
                 Ok(o) => o,
                 Err(e) => return Err(e),
             };
             return eval_infix_expression(&ifx.operator, &left, &right);
         }
-        Expression::BlockStatement(blk) => eval_block(blk),
+        Expression::BlockStatement(blk) => eval_block(blk, env),
         Expression::IfStatement(if_stmt) => {
             // TODO: perhaps consequence should just be an expression
-            let evaluated = match eval_expression(&if_stmt.condition) {
+            let evaluated = match eval_expression(&if_stmt.condition, env) {
                 Ok(eval) => eval,
                 Err(e) => return Err(e),
             };
             if is_truthy(evaluated) {
-                return eval_block(&if_stmt.consequence);
+                return eval_block(&if_stmt.consequence, env);
             }
 
             match &if_stmt.alternative {
-                Some(alt) => eval_block(&alt),
+                Some(alt) => eval_block(&alt, env),
                 None => Ok(Rc::new(NULL)),
             }
         }
@@ -195,10 +203,10 @@ fn is_truthy(obj: Rc<Object>) -> bool {
     }
 }
 
-fn eval_block(block: &BlockStatement) -> EvalResult {
+fn eval_block(block: &BlockStatement, env: &EvalEnv) -> EvalResult {
     let mut result = Rc::new(Null);
     for stmt in &block.statements {
-        let res = match eval_statement(stmt) {
+        let res = match eval_statement(stmt, env) {
             Ok(r) => r,
             Err(e) => return Err(e),
         };
@@ -217,15 +225,18 @@ mod tests {
     use crate::ast::Node;
     use crate::eval::{eval, EvalResult};
     use crate::lexer::Lexer;
-    use crate::object::Object;
+    use crate::object::{Environment, Object};
     use crate::parser::Parser;
+    use std::cell::RefCell;
     use std::ops::Deref;
+    use std::rc::Rc;
 
     fn test_eval(input: &str) -> EvalResult {
+        let env = Rc::new(RefCell::new(Environment::new()));
         let l = Lexer::new(input);
         let mut p = Parser::new(l);
         let program = p.parse_program();
-        eval(program)
+        eval(program, &env)
     }
 
     fn test_int_object(obj: &Object, expected: Option<i64>) {
@@ -624,7 +635,7 @@ mod tests {
                 expected: 5,
             },
             Test {
-                input: "let a = 5; let b = a; let c = a + b + 5; c;"
+                input: "let a = 5; let b = a; let c = a + b + 5; c;",
                 expected: 15,
             },
         ];

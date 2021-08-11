@@ -195,7 +195,7 @@ impl<'a> Parser<'a> {
             self.advance_tokens();
         }
 
-        let let_stmt = LetStatement::new(ident_name, Some(let_val));
+        let let_stmt = LetStatement::new(ident_name, let_val);
         Ok(Let(Box::new(let_stmt)))
     }
 
@@ -493,11 +493,7 @@ mod tests {
             match let_stmt {
                 Statement::Let(l_s) => {
                     assert_eq!(t.expected_identifier, l_s.name);
-                    if l_s.value.is_none() {
-                        panic!("expected let statement value not to be none!")
-                    }
-                    let l_val = l_s.value.as_ref().unwrap();
-                    test_expression_token_value(t.expected_value, l_val);
+                    test_expression_token_value(t.expected_value, &l_s.value);
                 }
                 _ => {
                     panic!("expected a let statement");
