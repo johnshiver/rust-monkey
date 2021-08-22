@@ -3,8 +3,7 @@ use crate::object;
 use crate::object::Object::Null;
 use crate::object::{Environment, Object};
 use crate::token::Token;
-use std::borrow::BorrowMut;
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 pub type EvalResult = Result<Rc<Object>, EvalError>;
@@ -107,7 +106,7 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Environment>>) -> EvalResul
                 None => Ok(Rc::new(NULL)),
             }
         }
-        _ => panic!("expression not supported yet"),
+        _ => panic!("expression: {} not supported yet", exp.to_string()),
     }
 }
 
