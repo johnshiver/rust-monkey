@@ -26,7 +26,7 @@ pub fn start<R: BufRead, W: Write>(reader: &mut R, writer: &mut W) {
             continue;
         }
         // TODO: do i need to clear env memory?
-        match eval(program, &env) {
+        match eval(program, Rc::clone(&env)) {
             Ok(obj) => println!("{}", obj),
             Err(e) => println!("evaluation error: {}", e.message),
         }

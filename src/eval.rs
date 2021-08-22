@@ -3,11 +3,11 @@ use crate::object;
 use crate::object::Object::Null;
 use crate::object::{Environment, Object};
 use crate::token::Token;
-use std::cell::RefCell;
+use std::borrow::BorrowMut;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
 pub type EvalResult = Result<Rc<Object>, EvalError>;
-pub type EvalEnv = Rc<RefCell<Environment>>;
 
 const TRUE: Object = Object::Boolean(true);
 const FALSE: Object = Object::Boolean(false);
@@ -18,7 +18,7 @@ pub struct EvalError {
     pub message: String,
 }
 
-pub fn eval(node: Node, env: &EvalEnv) -> EvalResult {
+pub fn eval(node: Node, env: Rc<RefCell<Environment>>) -> EvalResult {
     match node {
         Node::Program(prg) => eval_program(&prg, env),
         Node::Statement(stm) => eval_statement(&stm, env),
@@ -26,10 +26,10 @@ pub fn eval(node: Node, env: &EvalEnv) -> EvalResult {
     }
 }
 
-fn eval_program(prog: &Program, env: &EvalEnv) -> EvalResult {
+fn eval_program(prog: &Program, env: Rc<RefCell<Environment>>) -> EvalResult {
     let mut result = Rc::new(Null);
     for stmt in &prog.statements {
-        let res = match eval_statement(stmt, env) {
+        let res = match eval_statement(stmt, Rc::clone(&env)) {
             Ok(r) => r,
             Err(e) => return Err(e),
         };
@@ -43,7 +43,7 @@ fn eval_program(prog: &Program, env: &EvalEnv) -> EvalResult {
     Ok(result)
 }
 
-fn eval_statement(statement: &Statement, env: EvalEnv) -> EvalResult {
+fn eval_statement(statement: &Statement, env: Rc<RefCell<Environment>>) -> EvalResult {
     match statement {
         Statement::ExpressionStatement(exp) => eval_expression(exp, env),
         Statement::Return(ret) => {
@@ -54,19 +54,19 @@ fn eval_statement(statement: &Statement, env: EvalEnv) -> EvalResult {
             return Ok(Rc::new(Object::Return(Rc::new(object::Return { value }))));
         }
         Statement::Let(let_stmt) => {
-            let value = match eval_expression(&let_stmt.value, env) {
+            let value = match eval_expression(&let_stmt.value, Rc::clone(&env)) {
                 Ok(v) => v,
                 Err(e) => return Err(e),
             };
-            env.borrow_mut()
-                .set(format!("{}", let_stmt.name).as_str(), value);
-            return Ok(value.clone());
+            let obj = Rc::clone(&value);
+            env.borrow_mut().set(let_stmt.name.clone().to_string(), obj);
+            return Ok(value);
         }
         _ => panic!("not implemented"),
     }
 }
 
-fn eval_expression(exp: &Expression, env: &EvalEnv) -> EvalResult {
+fn eval_expression(exp: &Expression, env: Rc<RefCell<Environment>>) -> EvalResult {
     match exp {
         Expression::Integer(int) => return Ok(Rc::new(Object::Integer(*int))),
         Expression::Bool(b) => match *b {
@@ -81,11 +81,11 @@ fn eval_expression(exp: &Expression, env: &EvalEnv) -> EvalResult {
             return eval_prefix_expression(&pfx.operator, right.as_ref());
         }
         Expression::Infix(ifx) => {
-            let right = match eval_expression(&ifx.right, env) {
+            let right = match eval_expression(&ifx.right, Rc::clone(&env)) {
                 Ok(o) => o,
                 Err(e) => return Err(e),
             };
-            let left = match eval_expression(&ifx.left, env) {
+            let left = match eval_expression(&ifx.left, Rc::clone(&env)) {
                 Ok(o) => o,
                 Err(e) => return Err(e),
             };
@@ -94,16 +94,16 @@ fn eval_expression(exp: &Expression, env: &EvalEnv) -> EvalResult {
         Expression::BlockStatement(blk) => eval_block(blk, env),
         Expression::IfStatement(if_stmt) => {
             // TODO: perhaps consequence should just be an expression
-            let evaluated = match eval_expression(&if_stmt.condition, env) {
+            let evaluated = match eval_expression(&if_stmt.condition, Rc::clone(&env)) {
                 Ok(eval) => eval,
                 Err(e) => return Err(e),
             };
             if is_truthy(evaluated) {
-                return eval_block(&if_stmt.consequence, env);
+                return eval_block(&if_stmt.consequence, Rc::clone(&env));
             }
 
             match &if_stmt.alternative {
-                Some(alt) => eval_block(&alt, env),
+                Some(alt) => eval_block(&alt, Rc::clone(&env)),
                 None => Ok(Rc::new(NULL)),
             }
         }
@@ -203,10 +203,10 @@ fn is_truthy(obj: Rc<Object>) -> bool {
     }
 }
 
-fn eval_block(block: &BlockStatement, env: &EvalEnv) -> EvalResult {
+fn eval_block(block: &BlockStatement, env: Rc<RefCell<Environment>>) -> EvalResult {
     let mut result = Rc::new(Null);
     for stmt in &block.statements {
-        let res = match eval_statement(stmt, env) {
+        let res = match eval_statement(stmt, Rc::clone(&env)) {
             Ok(r) => r,
             Err(e) => return Err(e),
         };
@@ -236,7 +236,7 @@ mod tests {
         let l = Lexer::new(input);
         let mut p = Parser::new(l);
         let program = p.parse_program();
-        eval(program, &env)
+        eval(program, env)
     }
 
     fn test_int_object(obj: &Object, expected: Option<i64>) {

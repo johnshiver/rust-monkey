@@ -18,7 +18,7 @@ pub enum Object {
 }
 
 impl Object {
-    pub fn Inspect(&self) -> String {
+    pub fn inspect(&self) -> String {
         match self {
             Object::Integer(val) => format!("{}", val),
             Object::Boolean(val) => format!("{}", val),
@@ -39,7 +39,7 @@ impl Object {
 
 impl Display for Object {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.Inspect())
+        write!(f, "{}", self.inspect())
     }
 }
 
@@ -55,6 +55,7 @@ impl PartialEq for Return {
 }
 impl Eq for Return {}
 
+#[derive(Clone, Debug)]
 pub struct Environment {
     pub store: HashMap<String, Rc<Object>>,
 }
@@ -70,8 +71,7 @@ impl Environment {
         self.store.get(key).cloned()
     }
 
-    pub fn set(mut self, key: &str, val: Rc<Object>) -> Rc<Object> {
-        self.store.insert(key.to_string(), val.clone());
-        val
+    pub fn set(&mut self, key: String, val: Rc<Object>) {
+        self.store.insert(key, val);
     }
 }
