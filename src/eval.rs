@@ -1,9 +1,12 @@
-use crate::ast::{BlockStatement, Expression, IfExpression, Node, Program, Statement};
+use crate::ast::{
+    BlockStatement, Expression, IdentExpression, IfExpression, Node, Program, Statement,
+};
 use crate::object;
 use crate::object::Object::Null;
 use crate::object::{Environment, Object};
 use crate::token::Token;
 use std::cell::RefCell;
+use std::process::id;
 use std::rc::Rc;
 
 pub type EvalResult = Result<Rc<Object>, EvalError>;
@@ -68,6 +71,7 @@ fn eval_statement(statement: &Statement, env: Rc<RefCell<Environment>>) -> EvalR
 fn eval_expression(exp: &Expression, env: Rc<RefCell<Environment>>) -> EvalResult {
     match exp {
         Expression::Integer(int) => return Ok(Rc::new(Object::Integer(*int))),
+        Expression::Ident(ident) => return eval_identifier(ident, env),
         Expression::Bool(b) => match *b {
             true => Ok(Rc::new(TRUE)),
             false => Ok(Rc::new(FALSE)),
@@ -216,6 +220,18 @@ fn eval_block(block: &BlockStatement, env: Rc<RefCell<Environment>>) -> EvalResu
         }
     }
 
+    Ok(result)
+}
+
+fn eval_identifier(identifier: &IdentExpression, env: Rc<RefCell<Environment>>) -> EvalResult {
+    let result = match env.borrow().get(identifier.to_string().as_str()) {
+        Some(v) => v,
+        None => {
+            return Err(EvalError {
+                message: format!("identifier not found: {}", identifier),
+            })
+        }
+    };
     Ok(result)
 }
 
