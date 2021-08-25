@@ -3,7 +3,7 @@ use crate::ast::{
 };
 use crate::object;
 use crate::object::Object::Null;
-use crate::object::{Environment, Object};
+use crate::object::{Environment, Function, Object};
 use crate::token::Token;
 use std::cell::RefCell;
 use std::process::id;
@@ -111,7 +111,12 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Environment>>) -> EvalResul
             }
         }
         Expression::Function(func_exp) => {
-            let params = func_exp.parameters;
+            let func = Function::new(
+                func_exp.parameters.clone(),
+                func_exp.body.clone(),
+                Rc::clone(&env),
+            );
+            Ok(Rc::new(Object::Function(Rc::new(func))))
         }
         _ => panic!("expression: {} not supported yet", exp.to_string()),
     }

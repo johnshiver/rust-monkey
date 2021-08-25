@@ -89,6 +89,20 @@ pub struct Function {
     pub environment: Rc<RefCell<Environment>>,
 }
 
+impl Function {
+    pub fn new(
+        params: Vec<IdentExpression>,
+        body: BlockStatement,
+        env: Rc<RefCell<Environment>>,
+    ) -> Function {
+        Function {
+            parameters: params,
+            body,
+            environment: env,
+        }
+    }
+}
+
 impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let mut param_strs = Vec::new();
