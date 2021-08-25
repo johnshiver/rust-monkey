@@ -110,6 +110,9 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Environment>>) -> EvalResul
                 None => Ok(Rc::new(NULL)),
             }
         }
+        Expression::Function(func_exp) => {
+            let params = func_exp.parameters;
+        }
         _ => panic!("expression: {} not supported yet", exp.to_string()),
     }
 }
@@ -119,19 +122,19 @@ fn eval_prefix_expression(operator: &Token, right: &Object) -> EvalResult {
         Token::Bang => Ok(Rc::new(eval_bang_prefix_operator_expression(right))),
         Token::Minus => eval_minus_prefix_operator_expression(right),
         _ => {
-            let message = format!("unknown operator: {}{}", operator, right.Type());
+            let message = format!("unknown operator: {}{}", operator, right.type_inspect());
             Err(EvalError { message })
         }
     }
 }
 
 fn eval_infix_expression(operator: &Token, left: &Object, right: &Object) -> EvalResult {
-    if left.Type() != right.Type() {
+    if left.type_inspect() != right.type_inspect() {
         let message = format!(
             "type mismatch: {} {} {}",
-            left.Type(),
+            left.type_inspect(),
             operator,
-            right.Type()
+            right.type_inspect()
         );
         return Err(EvalError { message });
     }
@@ -149,9 +152,9 @@ fn eval_infix_expression(operator: &Token, left: &Object, right: &Object) -> Eva
         (_, _, _) => {
             let message = format!(
                 "unknown operator: {} {} {}",
-                left.Type(),
+                left.type_inspect(),
                 operator,
-                right.Type()
+                right.type_inspect()
             );
             Err(EvalError { message })
         }
@@ -191,7 +194,7 @@ fn eval_minus_prefix_operator_expression(right: &Object) -> EvalResult {
             Ok(Rc::new(Object::Integer(-ni)))
         }
         _ => {
-            let message = format!("unknown operator: -{}", right.Type());
+            let message = format!("unknown operator: -{}", right.type_inspect());
             Err(EvalError { message })
         }
     }
@@ -663,5 +666,20 @@ mod tests {
                 ),
             }
         }
+    }
+
+    #[test]
+    fn test_function_object() {
+        let input = "fn(x) { x + 2; };";
+        let evaluated = match test_eval(input) {
+            Ok(eval) => eval,
+            Err(e) => panic!("received unexpected error: {}", e.message),
+        };
+
+        let func_object = match evaluated.deref() {
+            Object::Function(f) => f,
+            _ => panic!("expected function object, received {}", evaluated),
+        };
+        assert_eq!(1, func_object.parameters.len());
     }
 }

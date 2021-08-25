@@ -10,6 +10,7 @@ pub enum Node {
     Expression(Box<Expression>),
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Statement {
     Let(Box<LetStatement>),
     Return(Box<ReturnStatement>),
@@ -26,6 +27,7 @@ impl fmt::Display for Statement {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Expression {
     Ident(Box<IdentExpression>),
     Integer(i64),
@@ -76,6 +78,7 @@ impl fmt::Display for Program {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct LetStatement {
     pub name: Token,
     pub value: Expression,
@@ -94,6 +97,7 @@ impl fmt::Display for LetStatement {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct ReturnStatement {
     pub name: Token, // return token
     pub value: Expression,
@@ -114,6 +118,7 @@ impl fmt::Display for ReturnStatement {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct IdentExpression {
     pub token: Token, // return token
 }
@@ -135,6 +140,7 @@ impl fmt::Display for IdentExpression {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct BooleanLiteralExpression {
     pub value: Token,
 }
@@ -151,6 +157,7 @@ impl fmt::Display for BooleanLiteralExpression {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PrefixExpression {
     pub operator: Token, // prefix token, ! or -
     pub right: Expression,
@@ -173,6 +180,7 @@ impl fmt::Display for PrefixExpression {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct InfixExpression {
     pub right: Expression,
     pub operator: Token, // various operator tokens
@@ -200,6 +208,7 @@ impl fmt::Display for InfixExpression {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct IfExpression {
     pub token: Token,
     pub condition: Expression,
@@ -239,6 +248,7 @@ impl fmt::Display for IfExpression {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct BlockStatement {
     pub token: Token,
     pub statements: Vec<Statement>,
@@ -259,6 +269,7 @@ impl fmt::Display for BlockStatement {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct FunctionExpression {
     pub token: Token,
     pub parameters: Vec<IdentExpression>,
@@ -291,6 +302,7 @@ impl fmt::Display for FunctionExpression {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct CallExpression {
     pub token: Token,
     pub function: Expression, //Identifier or function literal

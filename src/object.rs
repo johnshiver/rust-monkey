@@ -1,3 +1,5 @@
+use crate::ast::{BlockStatement, IdentExpression};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
@@ -8,6 +10,7 @@ const INTEGER_OBJ: ObjectType = "INTEGER";
 const BOOLEAN_OBJ: ObjectType = "BOOLEAN";
 const NULL_OBJ: ObjectType = "NULL";
 const RETURN_VALUE_OBJ: ObjectType = "RETURN_VALUE";
+const FUNCTION_OBJ: ObjectType = "FUNCTION";
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Object {
@@ -15,6 +18,7 @@ pub enum Object {
     Boolean(bool),
     Null,
     Return(Rc<Return>),
+    Function(Rc<Function>),
 }
 
 impl Object {
@@ -24,15 +28,17 @@ impl Object {
             Object::Boolean(val) => format!("{}", val),
             Object::Null => "Null".to_string(),
             Object::Return(obj) => format!("{}", obj.value),
+            Object::Function(f) => format!("{}", f),
         }
     }
 
-    pub fn Type(&self) -> ObjectType {
+    pub fn type_inspect(&self) -> ObjectType {
         match self {
             Object::Integer(_) => INTEGER_OBJ,
             Object::Boolean(_) => BOOLEAN_OBJ,
             Object::Null => NULL_OBJ,
             Object::Return(_) => RETURN_VALUE_OBJ,
+            Object::Function(_) => FUNCTION_OBJ,
         }
     }
 }
@@ -75,3 +81,33 @@ impl Environment {
         self.store.insert(key, val);
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct Function {
+    pub parameters: Vec<IdentExpression>,
+    pub body: BlockStatement,
+    pub environment: Rc<RefCell<Environment>>,
+}
+
+impl Display for Function {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let mut param_strs = Vec::new();
+        for p in &self.parameters {
+            let param_str = format!("{}", p);
+            param_strs.push(param_str);
+        }
+        write!(f, "fn");
+        write!(f, "(");
+        write!(f, "{}", param_strs.join(", "));
+        write!(f, ") {} \n", "{");
+        write!(f, "{}\n", self.body);
+        write!(f, "{} \n", "}")
+    }
+}
+
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        todo!()
+    }
+}
+impl Eq for Function {}
