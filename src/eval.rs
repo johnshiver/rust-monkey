@@ -118,6 +118,21 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Environment>>) -> EvalResul
             );
             Ok(Rc::new(Object::Function(Rc::new(func))))
         }
+        Expression::Call(call_exp) => {
+            let func = match eval_expression(&call_exp.function, RC::clone(&env)) {
+                Ok(eval) => eval,
+                Err(e) => return Err(e),
+            };
+            match func {
+                Object::Function(func) => {
+                    // eval arguments
+                    //
+                }
+                _ => Err(EvalError {
+                    message: format!("expected function object, received {}", func.type_inspect()),
+                }),
+            }
+        }
         _ => panic!("expression: {} not supported yet", exp.to_string()),
     }
 }
@@ -686,5 +701,53 @@ mod tests {
             _ => panic!("expected function object, received {}", evaluated),
         };
         assert_eq!(1, func_object.parameters.len());
+        let param = &func_object.parameters[0];
+        assert_eq!(format!("{}", param.token), "x");
+        let expected_body = "(x + 2)";
+        assert_eq!(format!("{}", func_object.body), expected_body)
+    }
+
+    #[test]
+    fn test_function_application() {
+        struct Test<'a> {
+            input: &'a str,
+            expected: i64,
+        }
+
+        let tests = vec![
+            Test {
+                input: "let identity = fn(x) { x; }; identity(5);",
+                expected: 5,
+            },
+            Test {
+                input: "let identity = fn(x) { return x; }; identity(5);",
+                expected: 5,
+            },
+            Test {
+                input: "let double = fn(x) { x * 2; }; double(5);",
+                expected: 10,
+            },
+            Test {
+                input: "let add = fn(x, y) { x + y; }; add(5, 5);",
+                expected: 10,
+            },
+            Test {
+                input: "let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));",
+                expected: 20,
+            },
+            Test {
+                input: "fn(x) { x; }(5)",
+                expected: 5,
+            },
+        ];
+        for test in tests {
+            match test_eval(test.input) {
+                Ok(obj) => test_int_object(&obj, Some(test.expected)),
+                Err(e) => panic!(
+                    "received an error {}, expected {}",
+                    e.message, test.expected
+                ),
+            }
+        }
     }
 }
