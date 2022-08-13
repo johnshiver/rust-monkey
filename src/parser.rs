@@ -107,10 +107,7 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match self.curr_token {
-            Token::Let => match self.parse_let() {
-                Ok(stmt) => Ok(stmt),
-                Err(e) => Err(e),
-            },
+            Token::Let => self.parse_let(),
             Token::Return => self.parse_return(),
             _ => self.parse_expression_statement(),
         }
@@ -174,22 +171,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_let(&mut self) -> Result<Statement, ParseError> {
-        let ident_name = match self.expect_ident() {
-            Ok(name) => name,
-            Err(e) => return Err(e),
-        };
+        let ident_name = self.expect_ident()?;
 
-        match self.expect_peek(&Token::Assign) {
-            Ok(()) => {}
-            Err(e) => return Err(e),
-        };
-
+        self.expect_peek(&Assign)?;
         self.advance_tokens();
-
-        let let_val = match self.parse_expression(LOWEST) {
-            Ok(expr) => expr,
-            Err(e) => return Err(e),
-        };
+        let let_val = self.parse_expression(LOWEST)?;
 
         if self.peek_token_is(&Token::Semicolon) {
             self.advance_tokens();
@@ -201,10 +187,7 @@ impl<'a> Parser<'a> {
 
     fn parse_return(&mut self) -> Result<Statement, ParseError> {
         self.advance_tokens();
-        let stmt = match self.parse_expression(LOWEST) {
-            Ok(exp) => exp,
-            Err(e) => return Err(e),
-        };
+        let stmt = self.parse_expression(LOWEST)?;
         if self.peek_token_is(&Token::Semicolon) {
             self.advance_tokens();
         }
@@ -214,7 +197,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident(&mut self, literal: String) -> Expression {
         let ie = IdentExpression::new(literal);
-        Expression::Ident(Box::new(ie))
+        Ident(Box::new(ie))
     }
 
     fn parse_int_literal(&mut self, literal: i64) -> Expression {
@@ -234,44 +217,24 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_if_expression(&mut self) -> Result<Expression, ParseError> {
-        match self.expect_peek(&Token::Lparen) {
-            Ok(()) => {}
-            Err(e) => return Err(e),
-        }
+        self.expect_peek(&Token::Lparen)?;
         self.advance_tokens();
-        let condition = self.parse_expression(LOWEST).unwrap();
-        match self.expect_peek(&Token::Rparen) {
-            Ok(()) => {}
-            Err(e) => {
-                return Err(e);
-            }
-        }
-        match self.expect_peek(&Token::Lbrace) {
-            Ok(()) => {}
-            Err(e) => {
-                return Err(e);
-            }
-        }
+        let condition = self.parse_expression(LOWEST)?;
 
-        let consequence = match self.parse_block_statement() {
-            Ok(block_statement) => block_statement,
-            Err(e) => return Err(e),
-        };
+        self.expect_peek(&Rparen)?;
+        self.expect_peek(&Token::Lbrace)?;
+
+        let consequence = self.parse_block_statement()?;
 
         let mut alternative = None;
         if self.peek_token_is(&Token::Else) {
             self.advance_tokens();
-            match self.expect_peek(&Token::Lbrace) {
-                Ok(()) => {}
-                Err(e) => return Err(e),
-            };
-            alternative = match self.parse_block_statement() {
-                Ok(stmt) => Some(stmt),
-                Err(e) => return Err(e),
-            };
+            self.expect_peek(&Token::Lbrace)?;
+            let new_alt = self.parse_block_statement()?;
+            alternative = Some(new_alt);
         }
 
-        let if_exp = IfExpression::new(Token::If, condition, consequence, alternative);
+        let if_exp = IfExpression::new(If, condition, consequence, alternative);
         Ok(IfStatement(Box::new(if_exp)))
     }
 

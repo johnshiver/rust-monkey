@@ -31,10 +31,7 @@ pub fn eval(node: Node, env: Rc<RefCell<Environment>>) -> EvalResult {
 fn eval_program(prog: &Program, env: Rc<RefCell<Environment>>) -> EvalResult {
     let mut result = Rc::new(Null);
     for stmt in &prog.statements {
-        let res = match eval_statement(stmt, Rc::clone(&env)) {
-            Ok(r) => r,
-            Err(e) => return Err(e),
-        };
+        let res = eval_statement(stmt, Rc::clone(&env))?;
 
         match &*res {
             Object::Return(r) => return Ok(Rc::clone(&r.value)),
@@ -49,10 +46,7 @@ fn eval_statement(statement: &Statement, env: Rc<RefCell<Environment>>) -> EvalR
     match statement {
         Statement::ExpressionStatement(exp) => eval_expression(exp, env),
         Statement::Return(ret) => {
-            let value = match eval_expression(&ret.value, env) {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            };
+            let value = eval_expression(&ret.value, env)?;
             return Ok(Rc::new(Object::Return(Rc::new(object::Return { value }))));
         }
         Statement::Let(let_stmt) => {
